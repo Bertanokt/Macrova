@@ -258,6 +258,22 @@ def antrenman_istatistik(kullanici_id: str = Depends(mevcut_kullanici)):
     }
 
 
+@router.delete("/sil/{antrenman_log_id}", summary="Antrenman sil")
+def antrenman_sil(antrenman_log_id: str, kullanici_id: str = Depends(mevcut_kullanici)):
+    kontrol = (
+        supabase.table("antrenman_loglari")
+        .select("id")
+        .eq("id", antrenman_log_id)
+        .eq("kullanici_id", kullanici_id)
+        .execute()
+    )
+    if not kontrol.data:
+        raise HTTPException(status_code=404, detail="Antrenman bulunamadı")
+    supabase.table("set_loglari").delete().eq("antrenman_log_id", antrenman_log_id).execute()
+    supabase.table("antrenman_loglari").delete().eq("id", antrenman_log_id).execute()
+    return {"mesaj": "Antrenman silindi"}
+
+
 @router.get("/egzersiz-gecmis/{egzersiz_id}", summary="Egzersiz geçmişi")
 def egzersiz_gecmis(egzersiz_id: str, kullanici_id: str = Depends(mevcut_kullanici)):
     loglar = (

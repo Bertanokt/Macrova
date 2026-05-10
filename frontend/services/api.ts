@@ -162,6 +162,7 @@ export const antrenmanBitir     = (logId: string, veri: object) =>
 export const antrenmanGecmisi   = (limit = 10) =>
   api.get('/antrenman/gecmis', { params: { limit } });
 export const antrenmanIstatistik = () => api.get('/antrenman/istatistik');
+export const antrenmanSil        = (logId: string) => api.delete(`/antrenman/sil/${logId}`);
 export const egzersizGecmisi    = (egzersizId: string) =>
   api.get(`/antrenman/egzersiz-gecmis/${egzersizId}`);
 
