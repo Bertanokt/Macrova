@@ -1,0 +1,22 @@
+services:
+  - type: web
+    name: macrova-api
+    env: python
+    region: frankfurt          # Supabase Frankfurt ile yakın
+    plan: free
+    buildCommand: pip install -r requirements.txt
+    startCommand: uvicorn main:app --host 0.0.0.0 --port $PORT
+    healthCheckPath: /saglik
+    envVars:
+      - key: ENVIRONMENT
+        value: production
+      - key: SUPABASE_URL
+        sync: false            # Render Dashboard'dan girilecek
+      - key: SUPABASE_KEY
+        sync: false
+      - key: JWT_SECRET
+        sync: false
+      - key: JWT_REFRESH_SECRET
+        sync: false
+      - key: ALLOWED_ORIGINS
+        sync: false            # örn: https://macrova-api.onrender.com

@@ -1,0 +1,15 @@
+export const Renkler = {
+  ana: '#2ECC71',
+  anaKoyu: '#27AE60',
+  arkaplan: '#F8F9FA',
+  kart: '#FFFFFF',
+  yazi: '#2C3E50',
+  yaziAcik: '#7F8C8D',
+  hata: '#E74C3C',
+  uyari: '#F39C12',
+  protein: '#3498DB',
+  karb: '#E67E22',
+  yag: '#9B59B6',
+  sinir: '#ECF0F1',
+  beyaz: '#FFFFFF',
+};
