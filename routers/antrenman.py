@@ -258,6 +258,22 @@ def antrenman_istatistik(kullanici_id: str = Depends(mevcut_kullanici)):
     }
 
 
+@router.delete("/sablon-sil/{sablon_id}", summary="Şablon sil")
+def sablon_sil(sablon_id: str, kullanici_id: str = Depends(mevcut_kullanici)):
+    kontrol = (
+        supabase.table("antrenman_sablonlari")
+        .select("id")
+        .eq("id", sablon_id)
+        .eq("kullanici_id", kullanici_id)
+        .execute()
+    )
+    if not kontrol.data:
+        raise HTTPException(status_code=404, detail="Şablon bulunamadı")
+    supabase.table("sablon_egzersizleri").delete().eq("sablon_id", sablon_id).execute()
+    supabase.table("antrenman_sablonlari").delete().eq("id", sablon_id).execute()
+    return {"mesaj": "Şablon silindi"}
+
+
 @router.delete("/sil/{antrenman_log_id}", summary="Antrenman sil")
 def antrenman_sil(antrenman_log_id: str, kullanici_id: str = Depends(mevcut_kullanici)):
     kontrol = (
