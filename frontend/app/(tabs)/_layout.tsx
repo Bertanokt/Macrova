@@ -45,6 +45,16 @@ export default function TabsLayout() {
           title: t('kiloTakibi'),
           tabBarIcon: ({ focused }) => <TabIkon sembol="⚖️" odak={focused} />,
         }} />
+      <Tabs.Screen name="antrenman"
+        options={{
+          title: t('antrenman'),
+          tabBarIcon: ({ focused }) => <TabIkon sembol="🏋️" odak={focused} />,
+        }} />
+      <Tabs.Screen name="koc"
+        options={{
+          title: t('koc'),
+          tabBarIcon: ({ focused }) => <TabIkon sembol="🤖" odak={focused} />,
+        }} />
       <Tabs.Screen name="profil"
         options={{
           title: t('profil'),

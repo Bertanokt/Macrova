@@ -9,7 +9,7 @@ from utils.limiter import limiter
 
 load_dotenv()
 
-from routers import auth, kullanici, yemek, takip
+from routers import auth, kullanici, yemek, takip, antrenman, ai_koc
 
 app = FastAPI(
     title="Macrova API",
@@ -61,10 +61,12 @@ app.add_middleware(
 )
 
 # ── Router'lar ──────────────────────────────────────────────────────────────
-app.include_router(auth.router,      prefix="/auth",      tags=["Auth"])
-app.include_router(kullanici.router, prefix="/kullanici", tags=["Kullanici"])
-app.include_router(yemek.router,     prefix="/yemek",     tags=["Yemek"])
-app.include_router(takip.router,     prefix="/takip",     tags=["Takip"])
+app.include_router(auth.router,       prefix="/auth",       tags=["Auth"])
+app.include_router(kullanici.router,  prefix="/kullanici",  tags=["Kullanici"])
+app.include_router(yemek.router,      prefix="/yemek",      tags=["Yemek"])
+app.include_router(takip.router,      prefix="/takip",      tags=["Takip"])
+app.include_router(antrenman.router,  prefix="/antrenman",  tags=["Antrenman"])
+app.include_router(ai_koc.router,     prefix="/ai",         tags=["AI Koc"])
 
 
 @app.get("/", tags=["Genel"])

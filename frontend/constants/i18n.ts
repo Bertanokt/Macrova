@@ -76,6 +76,22 @@ const translations = {
     grafikMinKayit: 'Grafik için en az 2 kilo kaydı gerekli',
     // Yasal
     yasal: 'Yasal', gizlilikPolitikasi: 'Gizlilik Politikası', kullanımKosullari: 'Kullanım Koşulları',
+    // Antrenman
+    antrenman: 'Antrenman', antrenmanBaslat: 'Antrenman Başlat', antrenmanBitir: 'Antrenmanı Bitir',
+    buHaftaAntrenman: 'Bu hafta', aylikAntrenman: 'Bu ay', toplamSure: 'Toplam süre',
+    sablonlar: 'Şablonlar', yeniSablon: 'Yeni Şablon', sablonAdi: 'Şablon Adı',
+    egzersizEkle: 'Egzersiz Ekle', setEkle: 'Set Ekle', setTamamla: 'Tamamla',
+    gecmisAntreman: 'Geçmiş', aktifAntrenman: 'Aktif Antrenman', sure: 'Süre',
+    onceki: 'Önceki', kg: 'KG', tekrar: 'Tekrar', set: 'Set',
+    antrenmanTamamlandi: 'Antrenman Tamamlandı!', toplamSet: 'Toplam Set',
+    toplamHacim: 'Toplam Hacim', dakika: 'dk', boslukBaslat: 'Boş Başlat',
+    kasGrubu: 'Kas Grubu', tumKasGruplari: 'Tümü',
+    // AI Koç
+    koc: 'Koç', aiKoc: 'AI Koç', sohbet: 'Sohbet', uyarilar: 'Akıllı Uyarılar',
+    mesajGonder: 'Mesaj gönder...', yazıyor: 'Koç yazıyor...', gonderiyor: 'Gönderiliyor...',
+    ornekSorular: 'Örnek sorular:', yeniOneri: 'Koçundan yeni öneri var',
+    beslenmeSkoru: 'Beslenme', antrenmanTutarliligi: 'Antrenman', kiloTrendi: 'Kilo Trendi',
+    aiServisiYok: 'AI servisi şu an kullanılamıyor',
   },
   en: {
     // General
@@ -151,6 +167,22 @@ const translations = {
     grafikMinKayit: 'At least 2 weight entries needed for chart',
     // Legal
     yasal: 'Legal', gizlilikPolitikasi: 'Privacy Policy', kullanımKosullari: 'Terms of Service',
+    // Workout
+    antrenman: 'Workout', antrenmanBaslat: 'Start Workout', antrenmanBitir: 'Finish Workout',
+    buHaftaAntrenman: 'This week', aylikAntrenman: 'This month', toplamSure: 'Total time',
+    sablonlar: 'Templates', yeniSablon: 'New Template', sablonAdi: 'Template Name',
+    egzersizEkle: 'Add Exercise', setEkle: 'Add Set', setTamamla: 'Done',
+    gecmisAntreman: 'History', aktifAntrenman: 'Active Workout', sure: 'Time',
+    onceki: 'Previous', kg: 'KG', tekrar: 'Reps', set: 'Set',
+    antrenmanTamamlandi: 'Workout Complete!', toplamSet: 'Total Sets',
+    toplamHacim: 'Total Volume', dakika: 'min', boslukBaslat: 'Empty Start',
+    kasGrubu: 'Muscle Group', tumKasGruplari: 'All',
+    // AI Coach
+    koc: 'Coach', aiKoc: 'AI Coach', sohbet: 'Chat', uyarilar: 'Smart Alerts',
+    mesajGonder: 'Send a message...', yazıyor: 'Coach is typing...', gonderiyor: 'Sending...',
+    ornekSorular: 'Example questions:', yeniOneri: 'New advice from your coach',
+    beslenmeSkoru: 'Nutrition', antrenmanTutarliligi: 'Workout', kiloTrendi: 'Weight Trend',
+    aiServisiYok: 'AI service is currently unavailable',
   },
 };
 

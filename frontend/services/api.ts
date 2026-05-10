@@ -147,4 +147,29 @@ export const suEkle        = (miktar_ml: number, tarih?: string) =>
 export const suGunlukGetir = (tarih?: string) =>
   api.get('/takip/su-gunluk', tarih ? { params: { tarih } } : undefined);
 
+// ── Antrenman ────────────────────────────────────────────────────────────────
+export const egzersizleriGetir  = (kas_grubu?: string, arama?: string) =>
+  api.get('/antrenman/egzersizler', { params: { kas_grubu, arama } });
+export const sablonlariGetir    = () => api.get('/antrenman/sablonlar');
+export const sablonOlustur      = (veri: object) => api.post('/antrenman/sablon-olustur', veri);
+export const antrenmanBaslat    = (veri: { sablon_id?: string; antrenman_adi?: string }) =>
+  api.post('/antrenman/baslat', veri);
+export const setEkle            = (veri: object) => api.post('/antrenman/set-ekle', veri);
+export const setGuncelle        = (setId: string, veri: object) =>
+  api.put(`/antrenman/set-guncelle/${setId}`, veri);
+export const antrenmanBitir     = (logId: string, veri: object) =>
+  api.post(`/antrenman/bitir/${logId}`, veri);
+export const antrenmanGecmisi   = (limit = 10) =>
+  api.get('/antrenman/gecmis', { params: { limit } });
+export const antrenmanIstatistik = () => api.get('/antrenman/istatistik');
+export const egzersizGecmisi    = (egzersizId: string) =>
+  api.get(`/antrenman/egzersiz-gecmis/${egzersizId}`);
+
+// ── AI Koç ───────────────────────────────────────────────────────────────────
+export const aiAnalizCalistir   = () => api.post('/ai/analiz-calistir');
+export const aiOnerileriGetir   = () => api.get('/ai/oneriler');
+export const aiOneriOkundu      = (oneriId: string) => api.put(`/ai/oneri-okundu/${oneriId}`);
+export const aiSohbet           = (mesaj: string, gecmis: object[]) =>
+  api.post('/ai/sohbet', { mesaj, gecmis });
+
 export default api;
