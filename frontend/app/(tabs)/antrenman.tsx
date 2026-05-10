@@ -2,7 +2,7 @@ import React, { useState, useCallback } from 'react';
 import {
   View, Text, ScrollView, TouchableOpacity, StyleSheet,
   Modal, TextInput, Alert, ActivityIndicator, FlatList,
-  RefreshControl, KeyboardAvoidingView, Platform,
+  RefreshControl, KeyboardAvoidingView, Platform, SafeAreaView,
 } from 'react-native';
 import { useFocusEffect } from 'expo-router';
 import {
@@ -13,18 +13,17 @@ import {
 import { useTemaStore } from '../../store/tema';
 import { useDilStore } from '../../store/dil';
 
-// kas_grubu DB değerleriyle birebir eşleşmeli
 const KAS_GRUPLARI_TR = ['Tümü', 'göğüs', 'sırt', 'omuz', 'biceps', 'triceps', 'bacak', 'karın', 'kardiyo'];
 const KAS_GRUPLARI_EN = ['All',  'chest', 'back', 'shoulder', 'biceps', 'triceps', 'leg',  'abs',  'cardio'];
 
 interface AktifSet {
-  id?: string;
-  set_no: number;
-  kg: string;      // ağırlık veya kardiyo için mesafe (km)
-  tekrar: string;  // tekrar veya kardiyo için süre (dk)
-  tamamlandi: boolean;
+  id?: string; set_no: number;
+  kg: string; tekrar: string; tamamlandi: boolean;
 }
 interface AktifEgzersiz { egzersiz: any; setler: AktifSet[]; }
+
+// Aktif antrenman modalı içindeki ekranlar
+type AktifEkran = 'antrenman' | 'picker' | 'bitir';
 
 export default function AntrenmanEkrani() {
   const { renkler } = useTemaStore();
@@ -32,38 +31,38 @@ export default function AntrenmanEkrani() {
   const KG          = dil === 'tr' ? KAS_GRUPLARI_TR : KAS_GRUPLARI_EN;
   const tr          = (t: string, e: string) => dil === 'tr' ? t : e;
 
-  // ── Ana ekran state ──
+  // ── Ana ekran ──
   const [istatistik, setIstatistik]   = useState<any>(null);
   const [sablonlar, setSablonlar]     = useState<any[]>([]);
   const [gecmis, setGecmis]           = useState<any[]>([]);
   const [yukleniyor, setYukleniyor]   = useState(true);
   const [yenileniyor, setYenileniyor] = useState(false);
 
-  // ── Aktif antrenman state ──
+  // ── Aktif antrenman ──
   const [aktifLogId, setAktifLogId]             = useState<string | null>(null);
   const [aktifAdi, setAktifAdi]                 = useState('');
   const [aktifEgzersizler, setAktifEgzersizler] = useState<AktifEgzersiz[]>([]);
 
-  // ── Modal state ──
-  const [gosterAktif, setGosterAktif]       = useState(false);
-  const [gosterEgPicker, setGosterEgPicker] = useState(false);
-  const [gosterOzet, setGosterOzet]         = useState(false);
-  const [gosterSablon, setGosterSablon]     = useState(false);
-  const [gosterBitir, setGosterBitir]       = useState(false);
-  const [ozet, setOzet]                     = useState<any>(null);
-  const [bitirSure, setBitirSure]           = useState('');
+  // ── Modal ve ekran yönetimi ──
+  // TEK modal (gosterAktif), içinde ekran geçişi yapıyoruz
+  const [gosterAktif, setGosterAktif]   = useState(false);
+  const [aktifEkran, setAktifEkran]     = useState<AktifEkran>('antrenman');
+  const [gosterOzet, setGosterOzet]     = useState(false);
+  const [gosterSablon, setGosterSablon] = useState(false);
+  const [ozet, setOzet]                 = useState<any>(null);
+  const [bitirSure, setBitirSure]       = useState('');
 
-  // ── Egzersiz picker state ──
+  // ── Egzersiz picker ──
   const [egzersizler, setEgzersizler]   = useState<any[]>([]);
   const [seciliKas, setSeciliKas]       = useState(KG[0]);
   const [egArama, setEgArama]           = useState('');
   const [egYukleniyor, setEgYukleniyor] = useState(false);
   const [egHata, setEgHata]             = useState(false);
 
-  // ── Şablon state ──
+  // ── Şablon ──
   const [sablonAdi, setSablonAdi] = useState('');
 
-  // ── Veri Yükle ───────────────────────────────────────────────────────────
+  // ── Veri yükle ───────────────────────────────────────────────────────────
   const veriYukle = async () => {
     try {
       const [ist, sab, gec] = await Promise.all([
@@ -78,7 +77,7 @@ export default function AntrenmanEkrani() {
 
   useFocusEffect(useCallback(() => { veriYukle(); }, []));
 
-  // ── Antrenman Başlat ──────────────────────────────────────────────────────
+  // ── Antrenman başlat ──────────────────────────────────────────────────────
   const antrenmanBaslatHandler = async (sablon?: any) => {
     try {
       const yanit = await antrenmanBaslat({
@@ -87,24 +86,25 @@ export default function AntrenmanEkrani() {
       });
       setAktifLogId(yanit.data.id);
       setAktifAdi(yanit.data.antrenman_adi);
-      if (sablon?.sablon_egzersizleri?.length) {
-        setAktifEgzersizler(sablon.sablon_egzersizleri.map((se: any) => ({
-          egzersiz: se.egzersizler,
-          setler: Array.from({ length: se.hedef_set || 3 }, (_, i) => ({
-            set_no: i + 1, kg: String(se.hedef_kg || ''),
-            tekrar: se.hedef_rep?.split('-')[0] || '', tamamlandi: false,
-          })),
-        })));
-      } else {
-        setAktifEgzersizler([]);
-      }
+      setAktifEgzersizler(
+        sablon?.sablon_egzersizleri?.length
+          ? sablon.sablon_egzersizleri.map((se: any) => ({
+              egzersiz: se.egzersizler,
+              setler: Array.from({ length: se.hedef_set || 3 }, (_, i) => ({
+                set_no: i + 1, kg: String(se.hedef_kg || ''),
+                tekrar: se.hedef_rep?.split('-')[0] || '', tamamlandi: false,
+              })),
+            }))
+          : []
+      );
+      setAktifEkran('antrenman');
       setGosterAktif(true);
     } catch {
       Alert.alert(tr('Hata', 'Error'), tr('Antrenman başlatılamadı.', 'Could not start workout.'));
     }
   };
 
-  // ── Egzersiz Picker ───────────────────────────────────────────────────────
+  // ── Egzersiz picker ───────────────────────────────────────────────────────
   const egzersizlerYukle = async (kas?: string, arama?: string) => {
     setEgYukleniyor(true); setEgHata(false);
     try {
@@ -112,38 +112,40 @@ export default function AntrenmanEkrani() {
       const ara = arama && arama.length >= 2 ? arama : undefined;
       const r   = await egzersizleriGetir(kg, ara);
       setEgzersizler(r.data || []);
-    } catch { setEgHata(true); }
-    finally { setEgYukleniyor(false); }
+    } catch {
+      setEgHata(true);
+    } finally {
+      setEgYukleniyor(false);
+    }
   };
 
   const pickerAc = () => {
     setSeciliKas(KG[0]); setEgArama('');
-    setGosterEgPicker(true);
+    setAktifEkran('picker');
     egzersizlerYukle();
   };
 
   const egzersizSec = (eg: any) => {
-    const kardiyo = eg.kas_grubu === 'kardiyo' || eg.kas_grubu === 'cardio';
     setAktifEgzersizler(prev => [...prev, {
       egzersiz: eg,
-      setler: [{ set_no: 1, kg: kardiyo ? '' : '', tekrar: '', tamamlandi: false }],
+      setler: [{ set_no: 1, kg: '', tekrar: '', tamamlandi: false }],
     }]);
-    setGosterEgPicker(false);
+    setAktifEkran('antrenman');
   };
 
   // ── Set işlemleri ─────────────────────────────────────────────────────────
-  const setGuncelleFn = (egIdx: number, setIdx: number, alan: 'kg' | 'tekrar', deger: string) => {
+  const setGuncelleFn = (ei: number, si: number, alan: 'kg' | 'tekrar', v: string) => {
     setAktifEgzersizler(prev => {
       const yeni = [...prev];
-      yeni[egIdx] = { ...yeni[egIdx], setler: yeni[egIdx].setler.map((s, i) => i === setIdx ? { ...s, [alan]: deger } : s) };
+      yeni[ei] = { ...yeni[ei], setler: yeni[ei].setler.map((s, i) => i === si ? { ...s, [alan]: v } : s) };
       return yeni;
     });
   };
 
-  const setTamamlaFn = async (egIdx: number, setIdx: number) => {
+  const setTamamlaFn = async (ei: number, si: number) => {
     if (!aktifLogId) return;
-    const eg  = aktifEgzersizler[egIdx];
-    const set = eg.setler[setIdx];
+    const eg = aktifEgzersizler[ei];
+    const set = eg.setler[si];
     try {
       if (set.id) {
         await setGuncelle(set.id, { tamamlandi: !set.tamamlandi });
@@ -158,7 +160,7 @@ export default function AntrenmanEkrani() {
         });
         setAktifEgzersizler(prev => {
           const yeni = [...prev];
-          yeni[egIdx] = { ...yeni[egIdx], setler: yeni[egIdx].setler.map((s, i) => i === setIdx ? { ...s, tamamlandi: true, id: r.data.id } : s) };
+          yeni[ei] = { ...yeni[ei], setler: yeni[ei].setler.map((s, i) => i === si ? { ...s, tamamlandi: true, id: r.data.id } : s) };
           return yeni;
         });
         return;
@@ -166,81 +168,61 @@ export default function AntrenmanEkrani() {
     } catch {}
     setAktifEgzersizler(prev => {
       const yeni = [...prev];
-      yeni[egIdx] = { ...yeni[egIdx], setler: yeni[egIdx].setler.map((s, i) => i === setIdx ? { ...s, tamamlandi: !s.tamamlandi } : s) };
+      yeni[ei] = { ...yeni[ei], setler: yeni[ei].setler.map((s, i) => i === si ? { ...s, tamamlandi: !s.tamamlandi } : s) };
       return yeni;
     });
   };
 
-  const yeniSetEkle = (egIdx: number) => {
+  const yeniSetEkle = (ei: number) => {
     setAktifEgzersizler(prev => {
       const yeni = [...prev];
-      const setler = yeni[egIdx].setler;
-      yeni[egIdx] = { ...yeni[egIdx], setler: [...setler, { set_no: setler.length + 1, kg: setler.at(-1)?.kg || '', tekrar: setler.at(-1)?.tekrar || '', tamamlandi: false }] };
+      const setler = yeni[ei].setler;
+      yeni[ei] = { ...yeni[ei], setler: [...setler, { set_no: setler.length + 1, kg: setler.at(-1)?.kg || '', tekrar: setler.at(-1)?.tekrar || '', tamamlandi: false }] };
       return yeni;
     });
   };
 
-  const egzersizSilFn = (egIdx: number) => {
-    Alert.alert(
-      tr('Egzersizi Sil', 'Remove Exercise'),
-      tr('Bu egzersizi kaldırmak istiyor musun?', 'Remove this exercise from the workout?'),
-      [
-        { text: tr('İptal', 'Cancel'), style: 'cancel' },
-        { text: tr('Kaldır', 'Remove'), style: 'destructive', onPress: () => {
-          setAktifEgzersizler(prev => prev.filter((_, i) => i !== egIdx));
-        }},
-      ]
-    );
+  const egzersizSilFn = (ei: number) => {
+    Alert.alert(tr('Egzersizi Kaldır', 'Remove Exercise'), tr('Bu egzersizi kaldırmak istiyor musun?', 'Remove this exercise?'), [
+      { text: tr('İptal', 'Cancel'), style: 'cancel' },
+      { text: tr('Kaldır', 'Remove'), style: 'destructive', onPress: () => setAktifEgzersizler(prev => prev.filter((_, i) => i !== ei)) },
+    ]);
   };
 
-  // ── Antrenman Bitir ───────────────────────────────────────────────────────
+  // ── Antrenman bitir ───────────────────────────────────────────────────────
   const antrenmanBitirOnayla = async () => {
     if (!aktifLogId) return;
     const dakika = parseInt(bitirSure) || 0;
     try {
       const r = await antrenmanBitir(aktifLogId, { sure_dakika: dakika || undefined });
       setOzet({ ...r.data.ozet, sure_dakika: dakika });
-      setGosterBitir(false);
       setGosterAktif(false);
       setGosterOzet(true);
-      setBitirSure('');
-      setAktifLogId(null);
-      setAktifEgzersizler([]);
+      setBitirSure(''); setAktifLogId(null); setAktifEgzersizler([]);
       veriYukle();
     } catch {
       Alert.alert(tr('Hata', 'Error'), tr('Bir hata oluştu.', 'An error occurred.'));
     }
   };
 
-  // ── Antrenman Geçmiş Sil ──────────────────────────────────────────────────
+  // ── Geçmiş sil ───────────────────────────────────────────────────────────
   const antrenmanSilHandler = (logId: string, adi: string) => {
-    Alert.alert(
-      tr('Antrenmanı Sil', 'Delete Workout'),
-      tr(`"${adi}" silinecek. Bu işlem geri alınamaz.`, `"${adi}" will be deleted. This cannot be undone.`),
-      [
-        { text: tr('İptal', 'Cancel'), style: 'cancel' },
-        { text: tr('Sil', 'Delete'), style: 'destructive', onPress: async () => {
-          try {
-            await antrenmanSil(logId);
-            setGecmis(prev => prev.filter(l => l.id !== logId));
-            veriYukle();
-          } catch {
-            Alert.alert(tr('Hata', 'Error'), tr('Silinemedi.', 'Could not delete.'));
-          }
-        }},
-      ]
-    );
+    Alert.alert(tr('Antrenmanı Sil', 'Delete Workout'), tr(`"${adi}" silinecek.`, `"${adi}" will be deleted.`), [
+      { text: tr('İptal', 'Cancel'), style: 'cancel' },
+      { text: tr('Sil', 'Delete'), style: 'destructive', onPress: async () => {
+        try {
+          await antrenmanSil(logId);
+          setGecmis(prev => prev.filter(l => l.id !== logId));
+          veriYukle();
+        } catch {}
+      }},
+    ]);
   };
 
-  // ── Şablon Kaydet ─────────────────────────────────────────────────────────
+  // ── Şablon kaydet ─────────────────────────────────────────────────────────
   const sablonKaydet = async () => {
-    if (!sablonAdi.trim()) {
-      Alert.alert(tr('Uyarı', 'Warning'), tr('Şablon adı girin.', 'Enter a template name.')); return;
-    }
-    try {
-      await sablonOlustur({ isim: sablonAdi, egzersizler: [] });
-      setSablonAdi(''); setGosterSablon(false); veriYukle();
-    } catch {}
+    if (!sablonAdi.trim()) { Alert.alert(tr('Uyarı', 'Warning'), tr('Şablon adı girin.', 'Enter template name.')); return; }
+    try { await sablonOlustur({ isim: sablonAdi, egzersizler: [] }); setSablonAdi(''); setGosterSablon(false); veriYukle(); } catch {}
   };
 
   const s = makeStyles(renkler);
@@ -251,20 +233,236 @@ export default function AntrenmanEkrani() {
     </View>
   );
 
-  // ── Render ────────────────────────────────────────────────────────────────
+  // ─────────────────────────────────────────────────────────────────────────
+  // Aktif antrenman modalı içinde — EGZERSİZ PİCKER ekranı
+  // ─────────────────────────────────────────────────────────────────────────
+  const renderPicker = () => (
+    <SafeAreaView style={[s.kap, { paddingTop: 0 }]}>
+      {/* Üst bar */}
+      <View style={s.modalBar}>
+        <TouchableOpacity activeOpacity={0.7} onPress={() => setAktifEkran('antrenman')}>
+          <Text style={{ color: renkler.ana, fontSize: 15, fontWeight: '600' }}>← {tr('Geri', 'Back')}</Text>
+        </TouchableOpacity>
+        <Text style={s.modalBaslik}>{tr('Egzersiz Seç', 'Select Exercise')}</Text>
+        <View style={{ width: 60 }} />
+      </View>
+
+      {/* Arama */}
+      <TextInput
+        style={s.aramaInput}
+        placeholder={tr('🔍 Egzersiz ara...', '🔍 Search...')}
+        placeholderTextColor={renkler.yaziAcik}
+        value={egArama}
+        onChangeText={v => { setEgArama(v); egzersizlerYukle(seciliKas, v); }}
+      />
+
+      {/* Kas grubu filtresi */}
+      <ScrollView horizontal showsHorizontalScrollIndicator={false} style={s.kasFiltre} contentContainerStyle={{ paddingHorizontal: 16 }}>
+        {KG.map(k => (
+          <TouchableOpacity key={k} style={[s.kasButon, seciliKas === k && s.kasButonAktif]} activeOpacity={0.7}
+            onPress={() => { setSeciliKas(k); egzersizlerYukle(k, egArama); }}>
+            <Text style={[s.kasYazi, seciliKas === k && { color: '#fff' }]}>
+              {(k === 'kardiyo' || k === 'cardio') ? '🏃 ' + k : k}
+            </Text>
+          </TouchableOpacity>
+        ))}
+      </ScrollView>
+
+      {/* Sonuçlar */}
+      {egYukleniyor ? (
+        <ActivityIndicator style={{ marginTop: 48 }} size="large" color={renkler.ana} />
+      ) : egHata ? (
+        <View style={s.bosKart}>
+          <Text style={s.bosEmoji}>⚠️</Text>
+          <Text style={s.bosBaslik}>{tr('Yüklenemedi', 'Failed to load')}</Text>
+          <TouchableOpacity activeOpacity={0.7} onPress={() => egzersizlerYukle(seciliKas, egArama)}>
+            <Text style={{ color: renkler.ana, fontWeight: '600', marginTop: 8 }}>{tr('Tekrar dene', 'Retry')}</Text>
+          </TouchableOpacity>
+        </View>
+      ) : egzersizler.length === 0 ? (
+        <View style={s.bosKart}>
+          <Text style={s.bosEmoji}>🔍</Text>
+          <Text style={s.bosBaslik}>{tr('Sonuç yok', 'No results')}</Text>
+        </View>
+      ) : (
+        <FlatList
+          data={egzersizler}
+          keyExtractor={i => i.id}
+          contentContainerStyle={{ padding: 16 }}
+          renderItem={({ item }) => {
+            const isKardiyo = item.kas_grubu === 'kardiyo' || item.kas_grubu === 'cardio';
+            return (
+              <TouchableOpacity style={s.egzersizSatir} activeOpacity={0.7} onPress={() => egzersizSec(item)}>
+                <View style={{ flex: 1 }}>
+                  <Text style={s.egzersizSatirAdi}>{item.isim}</Text>
+                  <Text style={s.egzersizSatirKas}>{isKardiyo ? '🏃 ' : ''}{item.kas_grubu}  ·  {item.ekipman}</Text>
+                </View>
+                <View style={[s.ekleIkon, isKardiyo && { backgroundColor: '#FF6B35' }]}>
+                  <Text style={{ color: '#fff', fontSize: 18, fontWeight: '800' }}>+</Text>
+                </View>
+              </TouchableOpacity>
+            );
+          }}
+        />
+      )}
+    </SafeAreaView>
+  );
+
+  // ─────────────────────────────────────────────────────────────────────────
+  // Aktif antrenman modalı içinde — ANTRENMANı BİTİR ekranı
+  // ─────────────────────────────────────────────────────────────────────────
+  const renderBitir = () => (
+    <SafeAreaView style={[s.kap, { justifyContent: 'center', padding: 24 }]}>
+      <View style={s.ozetModal}>
+        <Text style={s.ozetBaslik}>🏁 {tr('Antrenmanı Tamamla', 'Finish Workout')}</Text>
+        <Text style={[s.bolumAciklama, { marginBottom: 12 }]}>
+          {tr('Toplam antrenman süren kaç dakikaydı?', 'How many minutes did you workout?')}
+        </Text>
+        <View style={s.sureSatir}>
+          <TextInput
+            style={s.sureInput}
+            value={bitirSure}
+            onChangeText={setBitirSure}
+            keyboardType="number-pad"
+            placeholder="60"
+            placeholderTextColor={renkler.yaziAcik}
+            autoFocus
+          />
+          <Text style={s.sureBirim}>{tr('dakika', 'minutes')}</Text>
+        </View>
+        <Text style={[s.bolumAciklama, { marginBottom: 20, fontSize: 12 }]}>
+          {tr('Boş bırakabilirsin.', 'You can leave it empty.')}
+        </Text>
+        <View style={{ flexDirection: 'row', gap: 10 }}>
+          <TouchableOpacity style={[s.baslatButon, { flex: 1, backgroundColor: renkler.sinir, shadowOpacity: 0, marginTop: 0 }]}
+            activeOpacity={0.7} onPress={() => { setAktifEkran('antrenman'); setBitirSure(''); }}>
+            <Text style={[s.baslatYazi, { color: renkler.yazi }]}>{tr('İptal', 'Cancel')}</Text>
+          </TouchableOpacity>
+          <TouchableOpacity style={[s.baslatButon, { flex: 1, marginTop: 0 }]}
+            activeOpacity={0.75} onPress={antrenmanBitirOnayla}>
+            <Text style={s.baslatYazi}>✓ {tr('Tamamla', 'Complete')}</Text>
+          </TouchableOpacity>
+        </View>
+      </View>
+    </SafeAreaView>
+  );
+
+  // ─────────────────────────────────────────────────────────────────────────
+  // Aktif antrenman modalı içinde — AKTİF ANTRENMAN ekranı
+  // ─────────────────────────────────────────────────────────────────────────
+  const renderAntrenman = () => (
+    <SafeAreaView style={[s.kap, { paddingTop: 0 }]}>
+      {/* Üst bar */}
+      <View style={s.timerBar}>
+        <Text style={s.aktifAdi} numberOfLines={1}>{aktifAdi}</Text>
+        <TouchableOpacity style={s.bitirButon} activeOpacity={0.7} onPress={() => setAktifEkran('bitir')}>
+          <Text style={s.bitirYazi}>✓ {tr('Bitir', 'Finish')}</Text>
+        </TouchableOpacity>
+      </View>
+
+      <ScrollView style={{ flex: 1 }} contentContainerStyle={{ padding: 16 }} keyboardShouldPersistTaps="handled">
+        {aktifEgzersizler.length === 0 && (
+          <View style={[s.bosKart, { marginBottom: 16 }]}>
+            <Text style={s.bosEmoji}>💪</Text>
+            <Text style={s.bosBaslik}>{tr('Egzersiz ekle', 'Add exercises')}</Text>
+            <Text style={s.bosAciklama}>{tr('Aşağıdaki butona bas ve egzersiz seç.', 'Tap the button below.')}</Text>
+          </View>
+        )}
+
+        {aktifEgzersizler.map((ae, ei) => {
+          const kardiyo = ae.egzersiz?.kas_grubu === 'kardiyo' || ae.egzersiz?.kas_grubu === 'cardio';
+          return (
+            <View key={ei} style={s.egzersizBlok}>
+              <View style={s.egzersizBaslikSatir}>
+                <View style={{ flex: 1 }}>
+                  <Text style={s.egzersizAdi}>{ae.egzersiz?.isim}</Text>
+                  <Text style={s.egzersizKas}>{ae.egzersiz?.kas_grubu}  ·  {ae.egzersiz?.ekipman}</Text>
+                </View>
+                <TouchableOpacity onPress={() => egzersizSilFn(ei)} activeOpacity={0.7} style={{ padding: 6 }}>
+                  <Text style={{ color: renkler.kirmizi, fontSize: 16 }}>✕</Text>
+                </TouchableOpacity>
+              </View>
+
+              <View style={s.setSatirBaslik}>
+                <Text style={[s.setBaslik, { flex: 0.5 }]}>Set</Text>
+                {kardiyo ? (
+                  <>
+                    <Text style={[s.setBaslik, { flex: 2 }]}>⏱ {tr('Süre (dk)', 'Duration (min)')}</Text>
+                    <Text style={[s.setBaslik, { flex: 1.5 }]}>📍 km</Text>
+                  </>
+                ) : (
+                  <>
+                    <Text style={[s.setBaslik, { flex: 1 }]}>kg</Text>
+                    <Text style={[s.setBaslik, { flex: 1 }]}>{tr('Tekrar', 'Reps')}</Text>
+                  </>
+                )}
+                <Text style={[s.setBaslik, { flex: 0.7 }]}>✓</Text>
+              </View>
+
+              {ae.setler.map((set, si) => (
+                <View key={si} style={s.setSatir}>
+                  <Text style={[s.setNo, { flex: 0.5 }]}>{set.set_no}</Text>
+                  {kardiyo ? (
+                    <>
+                      <TextInput style={[s.setInput, { flex: 2 }, set.tamamlandi && s.setInputTamamlandi]}
+                        value={set.tekrar} onChangeText={v => setGuncelleFn(ei, si, 'tekrar', v)}
+                        keyboardType="number-pad" placeholder={tr('dk', 'min')}
+                        placeholderTextColor={renkler.yaziAcik} editable={!set.tamamlandi} />
+                      <TextInput style={[s.setInput, { flex: 1.5 }, set.tamamlandi && s.setInputTamamlandi]}
+                        value={set.kg} onChangeText={v => setGuncelleFn(ei, si, 'kg', v)}
+                        keyboardType="decimal-pad" placeholder="km"
+                        placeholderTextColor={renkler.yaziAcik} editable={!set.tamamlandi} />
+                    </>
+                  ) : (
+                    <>
+                      <TextInput style={[s.setInput, { flex: 1 }, set.tamamlandi && s.setInputTamamlandi]}
+                        value={set.kg} onChangeText={v => setGuncelleFn(ei, si, 'kg', v)}
+                        keyboardType="decimal-pad" placeholder="0"
+                        placeholderTextColor={renkler.yaziAcik} editable={!set.tamamlandi} />
+                      <TextInput style={[s.setInput, { flex: 1 }, set.tamamlandi && s.setInputTamamlandi]}
+                        value={set.tekrar} onChangeText={v => setGuncelleFn(ei, si, 'tekrar', v)}
+                        keyboardType="number-pad" placeholder="0"
+                        placeholderTextColor={renkler.yaziAcik} editable={!set.tamamlandi} />
+                    </>
+                  )}
+                  <TouchableOpacity style={[s.tamamlaButon, { flex: 0.7 }, set.tamamlandi && s.tamamlaAktif]}
+                    activeOpacity={0.7} onPress={() => setTamamlaFn(ei, si)}>
+                    <Text style={{ color: set.tamamlandi ? '#fff' : renkler.yaziAcik, fontSize: 16, fontWeight: '700' }}>✓</Text>
+                  </TouchableOpacity>
+                </View>
+              ))}
+
+              <TouchableOpacity style={s.setEkleButon} activeOpacity={0.7} onPress={() => yeniSetEkle(ei)}>
+                <Text style={{ color: renkler.ana, fontSize: 13, fontWeight: '600' }}>
+                  + {kardiyo ? tr('Seans Ekle', 'Add Session') : tr('Set Ekle', 'Add Set')}
+                </Text>
+              </TouchableOpacity>
+            </View>
+          );
+        })}
+
+        <TouchableOpacity style={s.egzersizEkleButon} activeOpacity={0.7} onPress={pickerAc}>
+          <Text style={s.egzersizEkleYazi}>+ {tr('Egzersiz / Kardiyo Ekle', 'Add Exercise / Cardio')}</Text>
+        </TouchableOpacity>
+
+        <View style={{ height: 32 }} />
+      </ScrollView>
+    </SafeAreaView>
+  );
+
+  // ─────────────────────────────────────────────────────────────────────────
+  // ANA EKRAN
+  // ─────────────────────────────────────────────────────────────────────────
   return (
     <View style={s.kap}>
-      <ScrollView
-        showsVerticalScrollIndicator={false}
-        refreshControl={<RefreshControl refreshing={yenileniyor} onRefresh={() => { setYenileniyor(true); veriYukle(); }} tintColor={renkler.ana} />}
-      >
-        {/* Header */}
+      <ScrollView showsVerticalScrollIndicator={false}
+        refreshControl={<RefreshControl refreshing={yenileniyor} onRefresh={() => { setYenileniyor(true); veriYukle(); }} tintColor={renkler.ana} />}>
+
         <View style={s.header}>
           <Text style={s.headerBaslik}>🏋️ {tr('Antrenman', 'Workout')}</Text>
           <Text style={s.headerAlt}>{tr('Egzersiz ve kardiyo takibi', 'Exercise & cardio tracking')}</Text>
         </View>
 
-        {/* İstatistik */}
         <View style={s.istatistikSatir}>
           <View style={s.istatistikKart}>
             <Text style={s.istatistikSayi}>{istatistik?.bu_hafta_antrenman_sayisi ?? 0}</Text>
@@ -304,7 +502,7 @@ export default function AntrenmanEkrani() {
             <View style={s.bosKart}>
               <Text style={s.bosEmoji}>📭</Text>
               <Text style={s.bosBaslik}>{tr('Henüz şablon yok', 'No templates yet')}</Text>
-              <Text style={s.bosAciklama}>{tr('"+ Yeni" ile Push Day, Pull Day gibi rutinler oluştur.', 'Use "+ New" to create routines like Push Day, Pull Day.')}</Text>
+              <Text style={s.bosAciklama}>{tr('"+ Yeni" ile Push Day, Pull Day gibi rutinler oluştur.', 'Create routines like Push Day, Pull Day.')}</Text>
             </View>
           ) : (
             <ScrollView horizontal showsHorizontalScrollIndicator={false}>
@@ -332,11 +530,8 @@ export default function AntrenmanEkrani() {
                   {log.tarih}  ·  {log.toplam_set} set{log.sure_dakika ? `  ·  ${log.sure_dakika} dk` : ''}
                 </Text>
               </View>
-              <TouchableOpacity
-                style={s.silButon}
-                activeOpacity={0.7}
-                onPress={() => antrenmanSilHandler(log.id, log.antrenman_adi)}
-              >
+              <TouchableOpacity style={s.silButon} activeOpacity={0.7}
+                onPress={() => antrenmanSilHandler(log.id, log.antrenman_adi)}>
                 <Text style={{ fontSize: 16 }}>🗑️</Text>
               </TouchableOpacity>
             </View>
@@ -346,267 +541,19 @@ export default function AntrenmanEkrani() {
         <View style={{ height: 32 }} />
       </ScrollView>
 
-      {/* ══════════════════════════════════════════════
-          AKTİF ANTRENMAN MODAL
-      ══════════════════════════════════════════════ */}
+      {/* ══ TEK MODAL — içinde ekran geçişi var ══ */}
       <Modal visible={gosterAktif} animationType="slide">
-        <View style={[s.kap, { paddingTop: 0 }]}>
-          {/* Üst bar */}
-          <View style={s.timerBar}>
-            <Text style={s.aktifAdi} numberOfLines={1}>{aktifAdi}</Text>
-            <TouchableOpacity
-              style={s.bitirButon}
-              activeOpacity={0.7}
-              onPress={() => setGosterBitir(true)}
-            >
-              <Text style={s.bitirYazi}>✓ {tr('Bitir', 'Finish')}</Text>
-            </TouchableOpacity>
-          </View>
-
-          <ScrollView style={{ flex: 1 }} contentContainerStyle={{ padding: 16 }}>
-            {aktifEgzersizler.length === 0 && (
-              <View style={[s.bosKart, { marginBottom: 16 }]}>
-                <Text style={s.bosEmoji}>💪</Text>
-                <Text style={s.bosBaslik}>{tr('Egzersiz ekle', 'Add exercises')}</Text>
-                <Text style={s.bosAciklama}>{tr('Aşağıdan egzersiz veya kardiyo seç.', 'Select exercises or cardio below.')}</Text>
-              </View>
-            )}
-
-            {aktifEgzersizler.map((ae, egIdx) => {
-              const kardiyo = ae.egzersiz?.kas_grubu === 'kardiyo' || ae.egzersiz?.kas_grubu === 'cardio';
-              return (
-                <View key={egIdx} style={s.egzersizBlok}>
-                  <View style={s.egzersizBaslikSatir}>
-                    <View style={{ flex: 1 }}>
-                      <Text style={s.egzersizAdi}>{ae.egzersiz?.isim}</Text>
-                      <Text style={s.egzersizKas}>{ae.egzersiz?.kas_grubu}  ·  {ae.egzersiz?.ekipman}</Text>
-                    </View>
-                    <TouchableOpacity onPress={() => egzersizSilFn(egIdx)} activeOpacity={0.7} style={{ padding: 4 }}>
-                      <Text style={{ color: renkler.kirmizi, fontSize: 16 }}>✕</Text>
-                    </TouchableOpacity>
-                  </View>
-
-                  {/* Set başlık satırı */}
-                  <View style={s.setSatirBaslik}>
-                    <Text style={[s.setBaslik, { flex: 0.5 }]}>Set</Text>
-                    {kardiyo ? (
-                      <>
-                        <Text style={[s.setBaslik, { flex: 2 }]}>⏱ {tr('Süre (dk)', 'Duration (min)')}</Text>
-                        <Text style={[s.setBaslik, { flex: 1.5 }]}>📍 {tr('Mesafe (km)', 'Distance (km)')}</Text>
-                      </>
-                    ) : (
-                      <>
-                        <Text style={[s.setBaslik, { flex: 1 }]}>kg</Text>
-                        <Text style={[s.setBaslik, { flex: 1 }]}>{tr('Tekrar', 'Reps')}</Text>
-                      </>
-                    )}
-                    <Text style={[s.setBaslik, { flex: 0.7 }]}>✓</Text>
-                  </View>
-
-                  {ae.setler.map((set, setIdx) => (
-                    <View key={setIdx} style={s.setSatir}>
-                      <Text style={[s.setNo, { flex: 0.5 }]}>{set.set_no}</Text>
-                      {kardiyo ? (
-                        <>
-                          <TextInput
-                            style={[s.setInput, { flex: 2 }, set.tamamlandi && s.setInputTamamlandi]}
-                            value={set.tekrar}
-                            onChangeText={v => setGuncelleFn(egIdx, setIdx, 'tekrar', v)}
-                            keyboardType="number-pad"
-                            placeholder={tr('dk', 'min')}
-                            placeholderTextColor={renkler.yaziAcik}
-                            editable={!set.tamamlandi}
-                          />
-                          <TextInput
-                            style={[s.setInput, { flex: 1.5 }, set.tamamlandi && s.setInputTamamlandi]}
-                            value={set.kg}
-                            onChangeText={v => setGuncelleFn(egIdx, setIdx, 'kg', v)}
-                            keyboardType="decimal-pad"
-                            placeholder="km"
-                            placeholderTextColor={renkler.yaziAcik}
-                            editable={!set.tamamlandi}
-                          />
-                        </>
-                      ) : (
-                        <>
-                          <TextInput
-                            style={[s.setInput, { flex: 1 }, set.tamamlandi && s.setInputTamamlandi]}
-                            value={set.kg}
-                            onChangeText={v => setGuncelleFn(egIdx, setIdx, 'kg', v)}
-                            keyboardType="decimal-pad"
-                            placeholder="0"
-                            placeholderTextColor={renkler.yaziAcik}
-                            editable={!set.tamamlandi}
-                          />
-                          <TextInput
-                            style={[s.setInput, { flex: 1 }, set.tamamlandi && s.setInputTamamlandi]}
-                            value={set.tekrar}
-                            onChangeText={v => setGuncelleFn(egIdx, setIdx, 'tekrar', v)}
-                            keyboardType="number-pad"
-                            placeholder="0"
-                            placeholderTextColor={renkler.yaziAcik}
-                            editable={!set.tamamlandi}
-                          />
-                        </>
-                      )}
-                      <TouchableOpacity
-                        style={[s.tamamlaButon, { flex: 0.7 }, set.tamamlandi && s.tamamlaAktif]}
-                        activeOpacity={0.7}
-                        onPress={() => setTamamlaFn(egIdx, setIdx)}
-                      >
-                        <Text style={{ color: set.tamamlandi ? '#fff' : renkler.yaziAcik, fontSize: 16, fontWeight: '700' }}>✓</Text>
-                      </TouchableOpacity>
-                    </View>
-                  ))}
-
-                  <TouchableOpacity style={s.setEkleButon} activeOpacity={0.7} onPress={() => yeniSetEkle(egIdx)}>
-                    <Text style={{ color: renkler.ana, fontSize: 13, fontWeight: '600' }}>
-                      + {kardiyo ? tr('Seans Ekle', 'Add Session') : tr('Set Ekle', 'Add Set')}
-                    </Text>
-                  </TouchableOpacity>
-                </View>
-              );
-            })}
-
-            <TouchableOpacity style={s.egzersizEkleButon} activeOpacity={0.7} onPress={pickerAc}>
-              <Text style={s.egzersizEkleYazi}>+ {tr('Egzersiz / Kardiyo Ekle', 'Add Exercise / Cardio')}</Text>
-            </TouchableOpacity>
-          </ScrollView>
-        </View>
+        {aktifEkran === 'picker'    ? renderPicker()    :
+         aktifEkran === 'bitir'     ? renderBitir()     :
+                                      renderAntrenman()}
       </Modal>
 
-      {/* ══════════════════════════════════════════════
-          ANTRENMANı BİTİR MODAL (manuel süre girişi)
-      ══════════════════════════════════════════════ */}
-      <Modal visible={gosterBitir} animationType="fade" transparent>
-        <KeyboardAvoidingView style={s.ozetOverlay} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
-          <View style={s.ozetModal}>
-            <Text style={s.ozetBaslik}>🏁 {tr('Antrenmanı Tamamla', 'Finish Workout')}</Text>
-
-            <Text style={[s.bolumAciklama, { marginBottom: 8 }]}>
-              {tr('Toplam antrenman süren kaç dakikaydı?', 'How many minutes did you workout?')}
-            </Text>
-            <View style={s.sureSatir}>
-              <TextInput
-                style={s.sureInput}
-                value={bitirSure}
-                onChangeText={setBitirSure}
-                keyboardType="number-pad"
-                placeholder="örn: 60"
-                placeholderTextColor={renkler.yaziAcik}
-                autoFocus
-              />
-              <Text style={s.sureBirim}>{tr('dakika', 'minutes')}</Text>
-            </View>
-            <Text style={[s.bolumAciklama, { marginTop: 4, marginBottom: 20, fontSize: 12 }]}>
-              {tr('Boş bırakabilirsin.', 'You can leave it empty.')}
-            </Text>
-
-            <View style={{ flexDirection: 'row', gap: 10 }}>
-              <TouchableOpacity
-                style={[s.baslatButon, { flex: 1, backgroundColor: renkler.sinir, shadowOpacity: 0, marginTop: 0 }]}
-                activeOpacity={0.7}
-                onPress={() => { setGosterBitir(false); setBitirSure(''); }}
-              >
-                <Text style={[s.baslatYazi, { color: renkler.yazi }]}>{tr('İptal', 'Cancel')}</Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={[s.baslatButon, { flex: 1, marginTop: 0 }]}
-                activeOpacity={0.75}
-                onPress={antrenmanBitirOnayla}
-              >
-                <Text style={s.baslatYazi}>{tr('Tamamla ✓', 'Complete ✓')}</Text>
-              </TouchableOpacity>
-            </View>
-          </View>
-        </KeyboardAvoidingView>
-      </Modal>
-
-      {/* ══════════════════════════════════════════════
-          EGZERSİZ SEÇİCİ MODAL
-      ══════════════════════════════════════════════ */}
-      <Modal visible={gosterEgPicker} animationType="slide">
-        <View style={[s.kap, { paddingTop: 56 }]}>
-          <View style={s.modalBar}>
-            <TouchableOpacity activeOpacity={0.7} onPress={() => setGosterEgPicker(false)}>
-              <Text style={{ color: renkler.ana, fontSize: 15, fontWeight: '600' }}>← {tr('Geri', 'Back')}</Text>
-            </TouchableOpacity>
-            <Text style={s.modalBaslik}>{tr('Egzersiz Seç', 'Select Exercise')}</Text>
-            <View style={{ width: 60 }} />
-          </View>
-
-          <TextInput
-            style={s.aramaInput}
-            placeholder={tr('🔍 Egzersiz ara...', '🔍 Search exercise...')}
-            placeholderTextColor={renkler.yaziAcik}
-            value={egArama}
-            onChangeText={v => { setEgArama(v); egzersizlerYukle(seciliKas, v); }}
-          />
-
-          <ScrollView horizontal showsHorizontalScrollIndicator={false} style={s.kasFiltre} contentContainerStyle={{ paddingHorizontal: 16 }}>
-            {KG.map(k => (
-              <TouchableOpacity
-                key={k}
-                style={[s.kasButon, seciliKas === k && s.kasButonAktif]}
-                activeOpacity={0.7}
-                onPress={() => { setSeciliKas(k); egzersizlerYukle(k, egArama); }}
-              >
-                <Text style={[s.kasYazi, seciliKas === k && { color: '#fff' }]}>
-                  {k === 'kardiyo' || k === 'cardio' ? '🏃 ' + k : k}
-                </Text>
-              </TouchableOpacity>
-            ))}
-          </ScrollView>
-
-          {egYukleniyor ? (
-            <ActivityIndicator style={{ marginTop: 48 }} size="large" color={renkler.ana} />
-          ) : egHata ? (
-            <View style={s.bosKart}>
-              <Text style={s.bosEmoji}>⚠️</Text>
-              <Text style={s.bosBaslik}>{tr('Yüklenemedi', 'Failed to load')}</Text>
-              <TouchableOpacity activeOpacity={0.7} onPress={() => egzersizlerYukle(seciliKas, egArama)}>
-                <Text style={{ color: renkler.ana, fontWeight: '600', marginTop: 8 }}>{tr('Tekrar dene', 'Retry')}</Text>
-              </TouchableOpacity>
-            </View>
-          ) : egzersizler.length === 0 ? (
-            <View style={s.bosKart}>
-              <Text style={s.bosEmoji}>🔍</Text>
-              <Text style={s.bosBaslik}>{tr('Sonuç bulunamadı', 'No results found')}</Text>
-            </View>
-          ) : (
-            <FlatList
-              data={egzersizler}
-              keyExtractor={i => i.id}
-              contentContainerStyle={{ padding: 16 }}
-              renderItem={({ item }) => {
-                const isKardiyo = item.kas_grubu === 'kardiyo' || item.kas_grubu === 'cardio';
-                return (
-                  <TouchableOpacity style={s.egzersizSatir} activeOpacity={0.7} onPress={() => egzersizSec(item)}>
-                    <View style={{ flex: 1 }}>
-                      <Text style={s.egzersizSatirAdi}>{item.isim}</Text>
-                      <Text style={s.egzersizSatirKas}>
-                        {isKardiyo ? '🏃 ' : ''}{item.kas_grubu}  ·  {item.ekipman}
-                      </Text>
-                    </View>
-                    <View style={[s.ekleIkon, isKardiyo && { backgroundColor: '#FF6B35' }]}>
-                      <Text style={{ color: '#fff', fontSize: 16, fontWeight: '800' }}>+</Text>
-                    </View>
-                  </TouchableOpacity>
-                );
-              }}
-            />
-          )}
-        </View>
-      </Modal>
-
-      {/* ══════════════════════════════════════════════
-          ÖZET MODAL
-      ══════════════════════════════════════════════ */}
+      {/* ══ Özet Modal (antrenman bittikten sonra) ══ */}
       <Modal visible={gosterOzet} animationType="fade" transparent>
         <View style={s.ozetOverlay}>
           <View style={s.ozetModal}>
             <Text style={s.ozetBaslik}>🎉 {tr('Tebrikler!', 'Great job!')}</Text>
-            {ozet?.sure_dakika > 0 && (
+            {(ozet?.sure_dakika ?? 0) > 0 && (
               <View style={s.ozetSatir}>
                 <Text style={s.ozetEtiket}>⏱ {tr('Süre', 'Duration')}</Text>
                 <Text style={s.ozetDeger}>{ozet.sure_dakika} dk</Text>
@@ -627,9 +574,7 @@ export default function AntrenmanEkrani() {
         </View>
       </Modal>
 
-      {/* ══════════════════════════════════════════════
-          ŞABLON OLUŞTURMA MODAL
-      ══════════════════════════════════════════════ */}
+      {/* ══ Şablon Oluşturma Modal ══ */}
       <Modal visible={gosterSablon} animationType="slide">
         <KeyboardAvoidingView style={[s.kap, { paddingTop: 56 }]} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
           <View style={s.modalBar}>
@@ -643,17 +588,9 @@ export default function AntrenmanEkrani() {
           </View>
           <View style={{ padding: 16 }}>
             <Text style={s.etiket}>{tr('Şablon Adı', 'Template Name')}</Text>
-            <TextInput
-              style={s.aramaInput}
-              value={sablonAdi}
-              onChangeText={setSablonAdi}
+            <TextInput style={s.aramaInput} value={sablonAdi} onChangeText={setSablonAdi}
               placeholder={tr('örn: Push Day, Bacak Günü...', 'e.g. Push Day, Leg Day...')}
-              placeholderTextColor={renkler.yaziAcik}
-              autoFocus
-            />
-            <Text style={s.bolumAciklama}>
-              💡 {tr('Şablon oluşturduktan sonra antrenman başlatınca egzersizler otomatik yüklenir.', 'After creating a template, exercises load automatically when you start a workout.')}
-            </Text>
+              placeholderTextColor={renkler.yaziAcik} autoFocus />
           </View>
         </KeyboardAvoidingView>
       </Modal>
@@ -691,7 +628,6 @@ const makeStyles = (r: ReturnType<typeof useTemaStore.getState>['renkler']) =>
     gecmisAdi:          { fontSize: 14, fontWeight: '700', color: r.yazi },
     gecmisBilgi:        { fontSize: 12, color: r.yaziAcik, marginTop: 3 },
     silButon:           { padding: 8, borderRadius: 10, backgroundColor: r.kirmizi + '18' },
-    // Aktif antrenman
     timerBar:           { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', backgroundColor: r.kart, paddingTop: 56, paddingBottom: 14, paddingHorizontal: 16, borderBottomWidth: 1, borderBottomColor: r.sinir },
     aktifAdi:           { fontSize: 16, fontWeight: '700', color: r.yazi, flex: 1, marginRight: 12 },
     bitirButon:         { backgroundColor: r.kirmizi, borderRadius: 12, paddingHorizontal: 16, paddingVertical: 10 },
@@ -700,7 +636,7 @@ const makeStyles = (r: ReturnType<typeof useTemaStore.getState>['renkler']) =>
     egzersizBaslikSatir:{ flexDirection: 'row', alignItems: 'flex-start', marginBottom: 2 },
     egzersizAdi:        { fontSize: 16, fontWeight: '800', color: r.yazi, marginBottom: 2 },
     egzersizKas:        { fontSize: 12, color: r.yaziAcik, marginBottom: 12, textTransform: 'capitalize' },
-    setSatirBaslik:     { flexDirection: 'row', marginBottom: 6, paddingHorizontal: 2 },
+    setSatirBaslik:     { flexDirection: 'row', marginBottom: 6 },
     setBaslik:          { fontSize: 11, color: r.yaziAcik, fontWeight: '600', textAlign: 'center' },
     setSatir:           { flexDirection: 'row', alignItems: 'center', marginBottom: 8, gap: 4 },
     setNo:              { fontSize: 14, fontWeight: '700', color: r.yaziAcik, textAlign: 'center' },
@@ -711,11 +647,9 @@ const makeStyles = (r: ReturnType<typeof useTemaStore.getState>['renkler']) =>
     setEkleButon:       { alignItems: 'center', paddingVertical: 10, marginTop: 4 },
     egzersizEkleButon:  { backgroundColor: r.kart, borderRadius: 16, padding: 18, alignItems: 'center', marginTop: 4, borderWidth: 1.5, borderColor: r.ana, borderStyle: 'dashed' },
     egzersizEkleYazi:   { color: r.ana, fontSize: 15, fontWeight: '700' },
-    // Bitir modal
     sureSatir:          { flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 4 },
     sureInput:          { flex: 1, borderWidth: 1.5, borderColor: r.sinir, borderRadius: 12, padding: 14, fontSize: 24, fontWeight: '700', color: r.yazi, textAlign: 'center', backgroundColor: r.arkaplan },
     sureBirim:          { fontSize: 16, color: r.yaziAcik, fontWeight: '600' },
-    // Egzersiz picker
     modalBar:           { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 16, paddingBottom: 14, borderBottomWidth: 1, borderBottomColor: r.sinir },
     modalBaslik:        { fontSize: 16, fontWeight: '700', color: r.yazi },
     aramaInput:         { marginHorizontal: 16, marginVertical: 12, borderWidth: 1.5, borderColor: r.sinir, borderRadius: 12, padding: 13, fontSize: 15, color: r.yazi, backgroundColor: r.arkaplan },
@@ -727,7 +661,6 @@ const makeStyles = (r: ReturnType<typeof useTemaStore.getState>['renkler']) =>
     egzersizSatirAdi:   { fontSize: 14, fontWeight: '700', color: r.yazi },
     egzersizSatirKas:   { fontSize: 12, color: r.yaziAcik, marginTop: 2, textTransform: 'capitalize' },
     ekleIkon:           { width: 34, height: 34, borderRadius: 17, backgroundColor: r.ana, alignItems: 'center', justifyContent: 'center' },
-    // Özet
     ozetOverlay:        { flex: 1, backgroundColor: '#00000088', justifyContent: 'center', padding: 24 },
     ozetModal:          { backgroundColor: r.kart, borderRadius: 24, padding: 28 },
     ozetBaslik:         { fontSize: 22, fontWeight: '800', color: r.yazi, textAlign: 'center', marginBottom: 20 },
