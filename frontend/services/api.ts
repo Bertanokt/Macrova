@@ -9,8 +9,7 @@ const getBaseUrl = () => {
     if (host) return `http://${host}:8000`;
     return 'http://localhost:8000';
   }
-  // Deploy sonrası Render'dan aldığın URL ile güncelle
-  return 'https://macrova-api.onrender.com';
+  return 'https://macrova-nt5v.onrender.com';
 };
 
 const BASE_URL = getBaseUrl();
