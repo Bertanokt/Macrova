@@ -9,6 +9,7 @@ import {
   antrenmanIstatistik, sablonlariGetir, antrenmanGecmisi,
   egzersizleriGetir, antrenmanBaslat, setEkle, setGuncelle,
   antrenmanBitir, sablonOlustur, antrenmanSil, sablonSil, egzersizOlustur,
+  antrenmanLogDetay, setSil,
 } from '../../services/api';
 import { useTemaStore } from '../../store/tema';
 import { useDilStore } from '../../store/dil';
@@ -218,6 +219,45 @@ export default function AntrenmanEkrani() {
     ]);
   };
 
+  // ── Set sil ───────────────────────────────────────────────────────────────
+  const setSilFn = async (ei: number, si: number) => {
+    const set = aktifEgzersizler[ei].setler[si];
+    if (set.id) { try { await setSil(set.id); } catch {} }
+    setAktifEgzersizler(prev => {
+      const yeni = [...prev];
+      const setler = yeni[ei].setler
+        .filter((_, i) => i !== si)
+        .map((s, i) => ({ ...s, set_no: i + 1 }));
+      yeni[ei] = { ...yeni[ei], setler };
+      return yeni;
+    });
+  };
+
+  // ── Geçmiş antrenmanı tekrarla ────────────────────────────────────────────
+  const antrenmanTekrarla = async (log: any) => {
+    try {
+      const r = await antrenmanLogDetay(log.id);
+      const { antrenman_adi, egzersizler: egList } = r.data;
+      if (!egList?.length) {
+        Alert.alert(tr('Bilgi', 'Info'), tr('Bu antrenmanın hareket kaydı yok.', 'No exercises found.'));
+        return;
+      }
+      const yanit = await antrenmanBaslat({ antrenman_adi });
+      setAktifLogId(yanit.data.id);
+      setAktifAdi(yanit.data.antrenman_adi);
+      setAktifEgzersizler(
+        egList.map((eg: any) => ({
+          egzersiz: eg,
+          setler: [{ set_no: 1, kg: '', tekrar: '', tamamlandi: false }],
+        }))
+      );
+      setAktifEkran('antrenman');
+      setGosterAktif(true);
+    } catch {
+      Alert.alert(tr('Hata', 'Error'), tr('Antrenman yüklenemedi.', 'Could not load workout.'));
+    }
+  };
+
   // ── Antrenman bitir ────────────────────────────────────────────────────────
   const antrenmanKaydet = async () => {
     if (!aktifLogId) return;
@@ -392,7 +432,8 @@ export default function AntrenmanEkrani() {
   // AKTİF ANTRENMAN ekranı
   // ═══════════════════════════════════════════════════════════════════════════
   const renderAntrenman = () => (
-    <SafeAreaView style={[s.kap, { paddingTop: 0 }]}>
+    <KeyboardAvoidingView style={[s.kap, { paddingTop: 0 }]} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
+    <SafeAreaView style={{ flex: 1 }}>
       <View style={s.timerBar}>
         <Text style={s.aktifAdi} numberOfLines={1}>{aktifAdi}</Text>
         <TouchableOpacity style={s.bitirButon} activeOpacity={0.7} onPress={() => setAktifEkran('bitir')}>
@@ -458,6 +499,11 @@ export default function AntrenmanEkrani() {
                     activeOpacity={0.7} onPress={() => setTamamlaFn(ei, si)}>
                     <Text style={{ color: set.tamamlandi ? '#fff' : renkler.yaziAcik, fontSize: 16, fontWeight: '700' }}>✓</Text>
                   </TouchableOpacity>
+                  {ae.setler.length > 1 && (
+                    <TouchableOpacity style={s.setSilButon} activeOpacity={0.7} onPress={() => setSilFn(ei, si)}>
+                      <Text style={{ color: renkler.kirmizi, fontSize: 13, fontWeight: '700' }}>✕</Text>
+                    </TouchableOpacity>
+                  )}
                 </View>
               ))}
 
@@ -476,6 +522,7 @@ export default function AntrenmanEkrani() {
         <View style={{ height: 32 }} />
       </ScrollView>
     </SafeAreaView>
+    </KeyboardAvoidingView>
   );
 
   // ═══════════════════════════════════════════════════════════════════════════
@@ -719,6 +766,10 @@ export default function AntrenmanEkrani() {
                 <Text style={s.gecmisAdi}>{log.antrenman_adi}</Text>
                 <Text style={s.gecmisBilgi}>{log.tarih}  ·  {log.toplam_set} set{log.sure_dakika ? `  ·  ${log.sure_dakika} dk` : ''}</Text>
               </View>
+              <TouchableOpacity style={[s.silButon, { marginRight: 8, backgroundColor: renkler.ana + '18' }]}
+                activeOpacity={0.7} onPress={() => antrenmanTekrarla(log)}>
+                <Text style={{ fontSize: 16 }}>🔁</Text>
+              </TouchableOpacity>
               <TouchableOpacity style={s.silButon} activeOpacity={0.7} onPress={() => gecmisSilHandler(log.id, log.antrenman_adi)}>
                 <Text style={{ fontSize: 16 }}>🗑️</Text>
               </TouchableOpacity>
@@ -828,6 +879,7 @@ const makeStyles = (r: ReturnType<typeof useTemaStore.getState>['renkler']) =>
     setTamamla:          { backgroundColor: r.ana + '18', borderColor: r.ana },
     tamamlaButon:        { backgroundColor: r.sinir, borderRadius: 10, paddingVertical: 10, alignItems: 'center', justifyContent: 'center' },
     tamamlaAktif:        { backgroundColor: r.ana },
+    setSilButon:         { width: 26, height: 26, borderRadius: 8, backgroundColor: renkler.kirmizi + '18', alignItems: 'center', justifyContent: 'center', marginLeft: 2 },
     setEkleButon:        { alignItems: 'center', paddingVertical: 10, marginTop: 4 },
     egzersizEkleButon:   { backgroundColor: r.kart, borderRadius: 16, padding: 18, alignItems: 'center', marginTop: 8, borderWidth: 1.5, borderColor: r.ana, borderStyle: 'dashed' },
     egzersizEkleYazi:    { color: r.ana, fontSize: 15, fontWeight: '700' },

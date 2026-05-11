@@ -282,6 +282,41 @@ def antrenman_istatistik(kullanici_id: str = Depends(mevcut_kullanici)):
     }
 
 
+@router.get("/log-detay/{log_id}", summary="Geçmiş antrenman egzersiz listesi")
+def log_detay(log_id: str, kullanici_id: str = Depends(mevcut_kullanici)):
+    kontrol = (
+        supabase.table("antrenman_loglari")
+        .select("id, antrenman_adi")
+        .eq("id", log_id)
+        .eq("kullanici_id", kullanici_id)
+        .execute()
+    )
+    if not kontrol.data:
+        raise HTTPException(status_code=404, detail="Antrenman bulunamadı")
+    setler = (
+        supabase.table("set_loglari")
+        .select("egzersiz_id, set_no, egzersizler(*)")
+        .eq("antrenman_log_id", log_id)
+        .order("set_no")
+        .execute()
+    ).data
+    seen: set = set()
+    egzersizler = []
+    for s in setler:
+        eid = s["egzersiz_id"]
+        if eid not in seen:
+            seen.add(eid)
+            if s.get("egzersizler"):
+                egzersizler.append(s["egzersizler"])
+    return {"antrenman_adi": kontrol.data[0]["antrenman_adi"], "egzersizler": egzersizler}
+
+
+@router.delete("/set-sil/{set_id}", summary="Set sil")
+def set_sil(set_id: str, kullanici_id: str = Depends(mevcut_kullanici)):
+    supabase.table("set_loglari").delete().eq("id", set_id).execute()
+    return {"mesaj": "Set silindi"}
+
+
 @router.delete("/sablon-sil/{sablon_id}", summary="Şablon sil")
 def sablon_sil(sablon_id: str, kullanici_id: str = Depends(mevcut_kullanici)):
     kontrol = (

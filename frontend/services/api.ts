@@ -165,6 +165,8 @@ export const antrenmanGecmisi   = (limit = 10) =>
   api.get('/antrenman/gecmis', { params: { limit } });
 export const antrenmanIstatistik = () => api.get('/antrenman/istatistik');
 export const antrenmanSil        = (logId: string) => api.delete(`/antrenman/sil/${logId}`);
+export const antrenmanLogDetay   = (logId: string) => api.get(`/antrenman/log-detay/${logId}`);
+export const setSil              = (setId: string) => api.delete(`/antrenman/set-sil/${setId}`);
 export const sablonSil           = (sablonId: string) => api.delete(`/antrenman/sablon-sil/${sablonId}`);
 export const egzersizGecmisi    = (egzersizId: string) =>
   api.get(`/antrenman/egzersiz-gecmis/${egzersizId}`);
