@@ -282,6 +282,25 @@ def antrenman_istatistik(kullanici_id: str = Depends(mevcut_kullanici)):
     }
 
 
+@router.put("/egzersiz-guncelle/{egzersiz_id}", summary="Egzersiz güncelle")
+def egzersiz_guncelle(egzersiz_id: str, veri: EgzersizOlustur, kullanici_id: str = Depends(mevcut_kullanici)):
+    sonuc = supabase.table("egzersizler").update({
+        "isim": veri.isim,
+        "kas_grubu": veri.kas_grubu,
+        "ekipman": veri.ekipman or "yok",
+        "zorluk": veri.zorluk or "orta",
+    }).eq("id", egzersiz_id).execute()
+    if not sonuc.data:
+        raise HTTPException(status_code=500, detail="Güncellenemedi")
+    return sonuc.data[0]
+
+
+@router.delete("/egzersiz-sil/{egzersiz_id}", summary="Egzersiz sil")
+def egzersiz_sil_db(egzersiz_id: str, kullanici_id: str = Depends(mevcut_kullanici)):
+    supabase.table("egzersizler").delete().eq("id", egzersiz_id).execute()
+    return {"mesaj": "Egzersiz silindi"}
+
+
 @router.get("/log-detay/{log_id}", summary="Geçmiş antrenman egzersiz listesi")
 def log_detay(log_id: str, kullanici_id: str = Depends(mevcut_kullanici)):
     kontrol = (

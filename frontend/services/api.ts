@@ -150,6 +150,9 @@ export const suGunlukGetir = (tarih?: string) =>
 // ── Antrenman ────────────────────────────────────────────────────────────────
 export const egzersizOlustur    = (veri: { isim: string; kas_grubu: string; ekipman?: string }) =>
   api.post('/antrenman/egzersiz-olustur', veri);
+export const egzersizGuncelleDB = (id: string, veri: { isim: string; kas_grubu: string; ekipman?: string }) =>
+  api.put(`/antrenman/egzersiz-guncelle/${id}`, veri);
+export const egzersizSilDB      = (id: string) => api.delete(`/antrenman/egzersiz-sil/${id}`);
 export const egzersizleriGetir  = (kas_grubu?: string, arama?: string) =>
   api.get('/antrenman/egzersizler', { params: { kas_grubu, arama } });
 export const sablonlariGetir    = () => api.get('/antrenman/sablonlar');

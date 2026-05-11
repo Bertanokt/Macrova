@@ -9,7 +9,7 @@ import {
   antrenmanIstatistik, sablonlariGetir, antrenmanGecmisi,
   egzersizleriGetir, antrenmanBaslat, setEkle, setGuncelle,
   antrenmanBitir, sablonOlustur, antrenmanSil, sablonSil, egzersizOlustur,
-  antrenmanLogDetay, setSil,
+  antrenmanLogDetay, setSil, egzersizGuncelleDB, egzersizSilDB,
 } from '../../services/api';
 import { useTemaStore } from '../../store/tema';
 import { useDilStore } from '../../store/dil';
@@ -61,11 +61,12 @@ export default function AntrenmanEkrani() {
   const [egYukleniyor, setEgYukleniyor] = useState(false);
   const [egHata, setEgHata]             = useState(false);
 
-  // ── Özel hareket oluşturma ─────────────────────────────────────────────────
-  const [ozelIsim, setOzelIsim]         = useState('');
-  const [ozelKas, setOzelKas]           = useState('');
-  const [ozelEkipman, setOzelEkipman]   = useState('');
+  // ── Özel hareket oluşturma / düzenleme ────────────────────────────────────
+  const [ozelIsim, setOzelIsim]             = useState('');
+  const [ozelKas, setOzelKas]               = useState('');
+  const [ozelEkipman, setOzelEkipman]       = useState('');
   const [ozelYukleniyor, setOzelYukleniyor] = useState(false);
+  const [duzenleEg, setDuzenleEg]           = useState<any>(null); // null = oluştur, obje = düzenle
 
   // ── Veri yükle ─────────────────────────────────────────────────────────────
   const veriYukle = async () => {
@@ -108,19 +109,62 @@ export default function AntrenmanEkrani() {
     Linking.openURL(`https://www.youtube.com/results?search_query=${sorgu}`);
   };
 
-  // ── Özel hareket kaydet ────────────────────────────────────────────────────
+  // ── Özel hareket kaydet / güncelle ────────────────────────────────────────
   const ozelHareketKaydet = async (hedef: 'antrenman' | 'sablon') => {
     if (!ozelIsim.trim()) { Alert.alert(tr('Uyarı', 'Warning'), tr('Hareket adı zorunlu.', 'Name required.')); return; }
     if (!ozelKas)         { Alert.alert(tr('Uyarı', 'Warning'), tr('Kas grubu seç.', 'Select muscle group.')); return; }
     setOzelYukleniyor(true);
     try {
-      const r = await egzersizOlustur({ isim: ozelIsim.trim(), kas_grubu: ozelKas, ekipman: ozelEkipman || 'yok' });
-      setOzelIsim(''); setOzelKas(''); setOzelEkipman('');
-      if (hedef === 'antrenman') egzersizSecAntrenman(r.data);
-      else egzersizSecSablon(r.data);
+      if (duzenleEg) {
+        // Düzenleme modu
+        await egzersizGuncelleDB(duzenleEg.id, { isim: ozelIsim.trim(), kas_grubu: ozelKas, ekipman: ozelEkipman || 'yok' });
+        setDuzenleEg(null);
+        setOzelIsim(''); setOzelKas(''); setOzelEkipman('');
+        egzersizlerYukle(seciliKas, egArama); // listeyi yenile
+        if (hedef === 'antrenman') setAktifEkran('picker');
+        else setSablonEkrani('picker');
+      } else {
+        // Oluşturma modu
+        const r = await egzersizOlustur({ isim: ozelIsim.trim(), kas_grubu: ozelKas, ekipman: ozelEkipman || 'yok' });
+        setOzelIsim(''); setOzelKas(''); setOzelEkipman('');
+        if (hedef === 'antrenman') egzersizSecAntrenman(r.data);
+        else egzersizSecSablon(r.data);
+      }
     } catch {
-      Alert.alert(tr('Hata', 'Error'), tr('Hareket eklenemedi.', 'Could not add exercise.'));
+      Alert.alert(tr('Hata', 'Error'), tr('İşlem başarısız.', 'Operation failed.'));
     } finally { setOzelYukleniyor(false); }
+  };
+
+  // ── Egzersiz uzun bas seçenekleri ─────────────────────────────────────────
+  const egzersizSecenekleri = (item: any, hedef: 'antrenman' | 'sablon') => {
+    Alert.alert(item.isim, tr('Ne yapmak istiyorsun?', 'What would you like to do?'), [
+      { text: tr('✎ Düzenle', '✎ Edit'), onPress: () => {
+        setDuzenleEg(item);
+        setOzelIsim(item.isim);
+        setOzelKas(item.kas_grubu);
+        setOzelEkipman(item.ekipman === 'yok' ? '' : (item.ekipman || ''));
+        if (hedef === 'antrenman') setAktifEkran('ozelhareket');
+        else setSablonEkrani('ozelhareket');
+      }},
+      { text: tr('🗑 Sil', '🗑 Delete'), style: 'destructive', onPress: () =>
+        Alert.alert(
+          tr('Emin misin?', 'Are you sure?'),
+          tr(`"${item.isim}" silinecek.`, `"${item.isim}" will be deleted.`),
+          [
+            { text: tr('İptal', 'Cancel'), style: 'cancel' },
+            { text: tr('Sil', 'Delete'), style: 'destructive', onPress: async () => {
+              try {
+                await egzersizSilDB(item.id);
+                setEgzersizler(prev => prev.filter(e => e.id !== item.id));
+              } catch {
+                Alert.alert(tr('Hata', 'Error'), tr('Silinemedi.', 'Could not delete.'));
+              }
+            }},
+          ]
+        )
+      },
+      { text: tr('İptal', 'Cancel'), style: 'cancel' },
+    ]);
   };
 
   // Antrenman için egzersiz seç
@@ -398,7 +442,9 @@ export default function AntrenmanEkrani() {
               const secilenMi = hedef === 'sablon' && sablonEgzersizleri.some(e => e.id === item.id);
               return (
                 <TouchableOpacity style={[s.egzersizSatir, secilenMi && { borderColor: renkler.ana, borderWidth: 1.5 }]}
-                  activeOpacity={0.7} onPress={() => sec(item)}>
+                  activeOpacity={0.7} onPress={() => sec(item)}
+                  onLongPress={() => egzersizSecenekleri(item, hedef)}
+                  delayLongPress={400}>
                   <View style={{ flex: 1 }}>
                     <Text style={s.egzersizSatirAdi}>{item.isim}</Text>
                     <Text style={s.egzersizSatirKas}>
@@ -588,10 +634,15 @@ export default function AntrenmanEkrani() {
       <KeyboardAvoidingView style={s.kap} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
         <SafeAreaView style={{ flex: 1 }}>
           <View style={s.modalBar}>
-            <TouchableOpacity activeOpacity={0.7} onPress={geri}>
+            <TouchableOpacity activeOpacity={0.7} onPress={() => {
+              geri();
+              if (duzenleEg) { setDuzenleEg(null); setOzelIsim(''); setOzelKas(''); setOzelEkipman(''); }
+            }}>
               <Text style={{ color: renkler.ana, fontSize: 15, fontWeight: '600' }}>← {tr('Geri', 'Back')}</Text>
             </TouchableOpacity>
-            <Text style={s.modalBaslik}>✏️ {tr('Özel Hareket', 'Custom Exercise')}</Text>
+            <Text style={s.modalBaslik}>
+              {duzenleEg ? `✎ ${tr('Düzenle', 'Edit')}` : `✏️ ${tr('Özel Hareket', 'Custom Exercise')}`}
+            </Text>
             <View style={{ width: 60 }} />
           </View>
 
@@ -624,12 +675,16 @@ export default function AntrenmanEkrani() {
               disabled={ozelYukleniyor}>
               {ozelYukleniyor
                 ? <ActivityIndicator color="#fff" />
-                : <Text style={s.baslatYazi}>✓ {tr('Hareketi Ekle', 'Add Exercise')}</Text>
+                : <Text style={s.baslatYazi}>
+                    {duzenleEg ? `✓ ${tr('Güncelle', 'Update')}` : `✓ ${tr('Hareketi Ekle', 'Add Exercise')}`}
+                  </Text>
               }
             </TouchableOpacity>
 
             <Text style={[s.aciklama, { textAlign: 'center', marginTop: 12 }]}>
-              {tr('Hareket veritabanına kaydedilir ve sonra da kullanabilirsin.', 'Exercise is saved and can be reused.')}
+              {duzenleEg
+                ? tr('Değişiklikler kaydedilecek.', 'Changes will be saved.')
+                : tr('Hareket veritabanına kaydedilir ve sonra da kullanabilirsin.', 'Exercise is saved and can be reused.')}
             </Text>
           </ScrollView>
         </SafeAreaView>
