@@ -879,7 +879,7 @@ const makeStyles = (r: ReturnType<typeof useTemaStore.getState>['renkler']) =>
     setTamamla:          { backgroundColor: r.ana + '18', borderColor: r.ana },
     tamamlaButon:        { backgroundColor: r.sinir, borderRadius: 10, paddingVertical: 10, alignItems: 'center', justifyContent: 'center' },
     tamamlaAktif:        { backgroundColor: r.ana },
-    setSilButon:         { width: 26, height: 26, borderRadius: 8, backgroundColor: renkler.kirmizi + '18', alignItems: 'center', justifyContent: 'center', marginLeft: 2 },
+    setSilButon:         { width: 26, height: 26, borderRadius: 8, backgroundColor: r.kirmizi + '18', alignItems: 'center', justifyContent: 'center', marginLeft: 2 },
     setEkleButon:        { alignItems: 'center', paddingVertical: 10, marginTop: 4 },
     egzersizEkleButon:   { backgroundColor: r.kart, borderRadius: 16, padding: 18, alignItems: 'center', marginTop: 8, borderWidth: 1.5, borderColor: r.ana, borderStyle: 'dashed' },
     egzersizEkleYazi:    { color: r.ana, fontSize: 15, fontWeight: '700' },
