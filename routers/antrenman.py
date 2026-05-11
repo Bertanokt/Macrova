@@ -24,6 +24,13 @@ class SablonOlustur(BaseModel):
     egzersizler: List[SablonEgzersizi] = []
 
 
+class EgzersizOlustur(BaseModel):
+    isim: str
+    kas_grubu: str
+    ekipman: Optional[str] = 'yok'
+    zorluk: Optional[str] = 'orta'
+
+
 class AntrenmaniBaslat(BaseModel):
     sablon_id: Optional[str] = None
     antrenman_adi: Optional[str] = None
@@ -51,6 +58,23 @@ class AntrenmaniTamamla(BaseModel):
 
 
 # ── Endpoints ─────────────────────────────────────────────────────────────────
+
+@router.post("/egzersiz-olustur", summary="Özel egzersiz oluştur")
+def egzersiz_olustur(veri: EgzersizOlustur, kullanici_id: str = Depends(mevcut_kullanici)):
+    # Aynı isimde varsa mevcut kaydı döndür
+    mevcut = supabase.table("egzersizler").select("*").ilike("isim", veri.isim).execute()
+    if mevcut.data:
+        return mevcut.data[0]
+    sonuc = supabase.table("egzersizler").insert({
+        "isim": veri.isim,
+        "kas_grubu": veri.kas_grubu,
+        "ekipman": veri.ekipman or "yok",
+        "zorluk": veri.zorluk or "orta",
+    }).execute()
+    if not sonuc.data:
+        raise HTTPException(status_code=500, detail="Egzersiz oluşturulamadı")
+    return sonuc.data[0]
+
 
 @router.get("/egzersizler", summary="Egzersiz listesi")
 def egzersiz_listesi(
