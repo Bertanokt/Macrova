@@ -44,6 +44,7 @@ class SetEkle(BaseModel):
     kg: Optional[float] = None
     tekrar: Optional[int] = None
     tamamlandi: bool = False
+    egzersiz_sira: Optional[int] = 0
 
 
 class SetGuncelle(BaseModel):
@@ -170,6 +171,7 @@ def set_ekle(veri: SetEkle, kullanici_id: str = Depends(mevcut_kullanici)):
         "kg": veri.kg,
         "tekrar": veri.tekrar,
         "tamamlandi": veri.tamamlandi,
+        "egzersiz_sira": veri.egzersiz_sira or 0,
     }).execute()
     if not sonuc.data:
         raise HTTPException(status_code=500, detail="Set kaydedilemedi")
@@ -203,6 +205,7 @@ def antrenman_bitir(
     sonuc = supabase.table("antrenman_loglari").update({
         "sure_dakika": veri.sure_dakika,
         "notlar": veri.notlar,
+        "tamamlandi": True,
     }).eq("id", antrenman_log_id).execute()
     setler = (
         supabase.table("set_loglari")
@@ -231,6 +234,7 @@ def antrenman_gecmis(
         supabase.table("antrenman_loglari")
         .select("*")
         .eq("kullanici_id", kullanici_id)
+        .eq("tamamlandi", True)
         .order("tarih", desc=True)
         .limit(limit)
         .execute()
@@ -314,9 +318,10 @@ def log_detay(log_id: str, kullanici_id: str = Depends(mevcut_kullanici)):
         raise HTTPException(status_code=404, detail="Antrenman bulunamadı")
     setler = (
         supabase.table("set_loglari")
-        .select("egzersiz_id, set_no, egzersizler(*)")
+        .select("egzersiz_id, set_no, egzersiz_sira, egzersizler(*)")
         .eq("antrenman_log_id", log_id)
-        .order("created_at")          # egzersizin ilk eklendiği sıraya göre
+        .order("egzersiz_sira")       # egzersizin eklendiği sıraya göre
+        .order("set_no")
         .execute()
     ).data
     seen: set = set()

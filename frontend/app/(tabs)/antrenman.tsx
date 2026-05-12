@@ -260,6 +260,7 @@ export default function AntrenmanEkrani() {
           antrenman_log_id: aktifLogId, egzersiz_id: eg.egzersiz.id,
           set_no: set.set_no, kg: parseFloat(set.kg) || undefined,
           tekrar: parseInt(set.tekrar) || undefined, tamamlandi: true,
+          egzersiz_sira: ei,
         });
         setAktifEgzersizler(prev => {
           const yeni = [...prev];
@@ -352,6 +353,7 @@ export default function AntrenmanEkrani() {
     try { await antrenmanSil(aktifLogId); } catch {}
     setGosterAktif(false);
     setBitirSure(''); setAktifLogId(null); setAktifEgzersizler([]);
+    veriYukle(); // geçmişi yenile (silinen log gözükmesin)
   };
 
   // ── Geçmiş sil ────────────────────────────────────────────────────────────
@@ -494,12 +496,12 @@ export default function AntrenmanEkrani() {
                     hitSlop={{ top: 8, bottom: 8, left: 8, right: 4 }}>
                     <Text style={{ fontSize: 17 }}>▶️</Text>
                   </TouchableOpacity>
-                  {/* Ekle butonu */}
-                  <View style={[s.ekleIkon, isKardiyo && { backgroundColor: '#FF6B35' }, secilenMi && { backgroundColor: renkler.yesil ?? '#34C759' }]}>
-                    <Text style={{ color: '#fff', fontSize: 20, fontWeight: '800', lineHeight: 22 }}>
-                      {secilenMi ? '✓' : '+'}
-                    </Text>
-                  </View>
+                  {/* Şablon modu: seçili göstergesi */}
+                  {secilenMi && (
+                    <View style={[s.ekleIkon, { backgroundColor: renkler.ana }]}>
+                      <Text style={{ color: '#fff', fontSize: 18, fontWeight: '800' }}>✓</Text>
+                    </View>
+                  )}
                 </TouchableOpacity>
               );
             }}
@@ -545,7 +547,9 @@ export default function AntrenmanEkrani() {
                       <Text style={s.sonPerfYazi}>
                         📅 {sonPerfMap[ae.egzersiz.id].tarih}{'  '}
                         {sonPerfMap[ae.egzersiz.id].setler
-                          .map((sp: any) => `${sp.kg ?? '?'}kg×${sp.tekrar ?? '?'}`)
+                          .map((sp: any) => kardiyo
+                            ? `${sp.kg ?? '?'}km/h · ${sp.tekrar ?? '?'}%`
+                            : `${sp.kg ?? '?'}kg×${sp.tekrar ?? '?'}`)
                           .join('  ·  ')}
                       </Text>
                     </View>
@@ -559,7 +563,7 @@ export default function AntrenmanEkrani() {
               <View style={s.setSatirBaslik}>
                 <Text style={[s.setBaslik, { flex: 0.5 }]}>Set</Text>
                 {kardiyo
-                  ? <><Text style={[s.setBaslik, { flex: 2 }]}>⏱ {tr('Süre (dk)', 'Min')}</Text><Text style={[s.setBaslik, { flex: 1.5 }]}>📍 km</Text></>
+                  ? <><Text style={[s.setBaslik, { flex: 1.5 }]}>🏃 {tr('Hız', 'Speed')}</Text><Text style={[s.setBaslik, { flex: 1.5 }]}>📐 {tr('Eğim%', 'Incline%')}</Text></>
                   : <><Text style={[s.setBaslik, { flex: 1 }]}>kg</Text><Text style={[s.setBaslik, { flex: 1 }]}>{tr('Tekrar', 'Reps')}</Text></>
                 }
                 <Text style={[s.setBaslik, { flex: 0.7 }]}>✓</Text>
@@ -570,12 +574,12 @@ export default function AntrenmanEkrani() {
                   <Text style={[s.setNo, { flex: 0.5 }]}>{set.set_no}</Text>
                   {kardiyo ? (
                     <>
-                      <TextInput style={[s.setInput, { flex: 2 }, set.tamamlandi && s.setTamamla]}
-                        value={set.tekrar} onChangeText={v => setGuncelleFn(ei, si, 'tekrar', v)}
-                        keyboardType="number-pad" placeholder="dk" placeholderTextColor={renkler.yaziAcik} editable={!set.tamamlandi} />
                       <TextInput style={[s.setInput, { flex: 1.5 }, set.tamamlandi && s.setTamamla]}
                         value={set.kg} onChangeText={v => setGuncelleFn(ei, si, 'kg', v)}
-                        keyboardType="decimal-pad" placeholder="km" placeholderTextColor={renkler.yaziAcik} editable={!set.tamamlandi} />
+                        keyboardType="decimal-pad" placeholder="8.5" placeholderTextColor={renkler.yaziAcik} editable={!set.tamamlandi} />
+                      <TextInput style={[s.setInput, { flex: 1.5 }, set.tamamlandi && s.setTamamla]}
+                        value={set.tekrar} onChangeText={v => setGuncelleFn(ei, si, 'tekrar', v)}
+                        keyboardType="number-pad" placeholder="0" placeholderTextColor={renkler.yaziAcik} editable={!set.tamamlandi} />
                     </>
                   ) : (
                     <>
