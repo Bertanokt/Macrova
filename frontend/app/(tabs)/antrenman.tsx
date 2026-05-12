@@ -122,7 +122,7 @@ export default function AntrenmanEkrani() {
 
   // ── YouTube ────────────────────────────────────────────────────────────────
   const youtubeAc = (isim: string) => {
-    const sorgu = encodeURIComponent(`${isim} nasıl yapılır`);
+    const sorgu = encodeURIComponent(dil === 'tr' ? `${isim} nasıl yapılır` : `how to do ${isim}`);
     Linking.openURL(`https://www.youtube.com/results?search_query=${sorgu}`);
   };
 
