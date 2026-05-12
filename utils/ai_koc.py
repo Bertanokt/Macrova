@@ -16,7 +16,7 @@ def _get_client() -> anthropic.Anthropic:
     return _client
 
 
-MODEL = "claude-haiku-4-5"
+MODEL = "claude-3-5-haiku-20241022"
 
 HEDEF_MAP = {
     "cut":            "kilo vermek (-500 kcal)",

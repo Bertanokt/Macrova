@@ -176,10 +176,10 @@ export const egzersizGecmisi    = (egzersizId: string) =>
   api.get(`/antrenman/egzersiz-gecmis/${egzersizId}`);
 
 // ── AI Koç ───────────────────────────────────────────────────────────────────
-export const aiAnalizCalistir   = () => api.post('/ai/analiz-calistir');
+export const aiAnalizCalistir   = () => api.post('/ai/analiz-calistir', {}, { timeout: 60_000 });
 export const aiOnerileriGetir   = () => api.get('/ai/oneriler');
 export const aiOneriOkundu      = (oneriId: string) => api.put(`/ai/oneri-okundu/${oneriId}`);
 export const aiSohbet           = (mesaj: string, gecmis: object[]) =>
-  api.post('/ai/sohbet', { mesaj, gecmis });
+  api.post('/ai/sohbet', { mesaj, gecmis }, { timeout: 60_000 });
 
 export default api;

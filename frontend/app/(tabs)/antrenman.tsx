@@ -31,6 +31,16 @@ export default function AntrenmanEkrani() {
   const KG          = dil === 'tr' ? KAS_TR : KAS_EN;
   const tr          = (t: string, e: string) => dil === 'tr' ? t : e;
 
+  // kas grubunu mevcut dile çevirir (DB değeri TR veya EN olabilir)
+  const kasGrubuCevir = (kas: string) => {
+    if (!kas) return kas;
+    const trIdx = KAS_TR.indexOf(kas);
+    if (trIdx >= 1) return dil === 'en' ? KAS_EN[trIdx] : kas;
+    const enIdx = KAS_EN.indexOf(kas);
+    if (enIdx >= 1) return dil === 'tr' ? KAS_TR[enIdx] : kas;
+    return kas;
+  };
+
   // ── Ana ekran ──────────────────────────────────────────────────────────────
   const [istatistik, setIstatistik]   = useState<any>(null);
   const [sablonlar, setSablonlar]     = useState<any[]>([]);
@@ -473,7 +483,7 @@ export default function AntrenmanEkrani() {
                   <View style={{ flex: 1 }}>
                     <Text style={s.egzersizSatirAdi}>{item.isim}</Text>
                     <Text style={s.egzersizSatirKas}>
-                      {isKardiyo ? '🏃 ' : ''}{item.kas_grubu}  ·  {item.ekipman}
+                      {isKardiyo ? '🏃 ' : ''}{kasGrubuCevir(item.kas_grubu)}  ·  {item.ekipman}
                     </Text>
                   </View>
                   {/* YouTube butonu */}
@@ -528,7 +538,7 @@ export default function AntrenmanEkrani() {
               <View style={s.egzersizBaslikSatir}>
                 <View style={{ flex: 1 }}>
                   <Text style={s.egzersizAdi}>{ae.egzersiz?.isim}</Text>
-                  <Text style={s.egzersizKas}>{ae.egzersiz?.kas_grubu}  ·  {ae.egzersiz?.ekipman}</Text>
+                  <Text style={s.egzersizKas}>{kasGrubuCevir(ae.egzersiz?.kas_grubu)}  ·  {ae.egzersiz?.ekipman}</Text>
                   {/* Son performans */}
                   {sonPerfMap[ae.egzersiz?.id] && (
                     <View style={s.sonPerfKart}>
@@ -708,7 +718,7 @@ export default function AntrenmanEkrani() {
             <View style={[s.egzersizSatir, { gap: 8 }]}>
               <View style={{ flex: 1 }}>
                 <Text style={s.egzersizSatirAdi}>{item.isim}</Text>
-                <Text style={s.egzersizSatirKas}>{item.kas_grubu}  ·  {item.ekipman}</Text>
+                <Text style={s.egzersizSatirKas}>{kasGrubuCevir(item.kas_grubu)}  ·  {item.ekipman}</Text>
               </View>
               {/* YouTube */}
               <TouchableOpacity style={s.ytButon} activeOpacity={0.7}
@@ -912,7 +922,7 @@ export default function AntrenmanEkrani() {
             <Text style={{ fontSize: 13, color: renkler.yaziAcik, width: 20 }}>{i + 1}.</Text>
             <View style={{ flex: 1 }}>
               <Text style={{ fontSize: 14, fontWeight: '600', color: renkler.yazi }}>{eg.isim}</Text>
-              <Text style={{ fontSize: 12, color: renkler.yaziAcik }}>{eg.kas_grubu}</Text>
+              <Text style={{ fontSize: 12, color: renkler.yaziAcik }}>{kasGrubuCevir(eg.kas_grubu)}</Text>
             </View>
             <TouchableOpacity onPress={() => setSablonEgzersizleri(prev => prev.filter(e => e.id !== eg.id))} activeOpacity={0.7} style={{ padding: 6 }}>
               <Text style={{ color: renkler.kirmizi, fontSize: 16 }}>✕</Text>

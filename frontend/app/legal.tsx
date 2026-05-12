@@ -4,9 +4,10 @@ import {
 } from 'react-native';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { useTemaStore } from '../store/tema';
+import { useDilStore } from '../store/dil';
 
-// ── İçerik tanımları ──────────────────────────────────────────────────────────
-const GIZLILIK = {
+// ── Türkçe içerik ─────────────────────────────────────────────────────────────
+const GIZLILIK_TR = {
   baslik: 'Gizlilik Politikası',
   tarih:  'Son güncelleme: Mayıs 2026',
   bolumler: [
@@ -37,7 +38,7 @@ const GIZLILIK = {
     {
       baslik: '4. Veri Paylaşımı',
       icerik: [
-        'Kişisel verilerinizi üçüncü taraflarla satmıyor veya kiralamıyoruz. Yalnızca hizmet sağlayıcılarımızla (Supabase, Railway) teknik operasyon kapsamında paylaşım yapılır.',
+        'Kişisel verilerinizi üçüncü taraflarla satmıyor veya kiralamıyoruz. Yalnızca hizmet sağlayıcılarımızla (Supabase, Render) teknik operasyon kapsamında paylaşım yapılır.',
       ],
     },
     {
@@ -72,7 +73,7 @@ const GIZLILIK = {
   ],
 };
 
-const KOSULLAR = {
+const KOSULLAR_TR = {
   baslik: 'Kullanım Koşulları',
   tarih:  'Son güncelleme: Mayıs 2026',
   bolumler: [
@@ -144,13 +145,156 @@ const KOSULLAR = {
   ],
 };
 
+// ── English content ───────────────────────────────────────────────────────────
+const GIZLILIK_EN = {
+  baslik: 'Privacy Policy',
+  tarih:  'Last updated: May 2026',
+  bolumler: [
+    {
+      baslik: '1. Data We Collect',
+      icerik: [
+        '• Account info: First name, last name, email address',
+        '• Health data: Age, gender, height, weight, activity level, nutrition goal',
+        '• Usage data: Daily food log, water intake, weight history',
+        '• Technical data: IP address (security purposes, stored 15 min), app errors',
+      ],
+    },
+    {
+      baslik: '2. How We Use Your Data',
+      icerik: [
+        '• To calculate personalised calorie and macro targets',
+        '• To record and display your nutrition tracking',
+        '• To maintain account security',
+        '• To improve the app (anonymous statistics only)',
+      ],
+    },
+    {
+      baslik: '3. Data Storage',
+      icerik: [
+        'Your data is stored encrypted on Supabase (AWS infrastructure, Frankfurt region). Passwords are hashed with bcrypt and are never stored in plain text.',
+      ],
+    },
+    {
+      baslik: '4. Data Sharing',
+      icerik: [
+        'We do not sell or rent your personal data to third parties. Data is shared only with our service providers (Supabase, Render) for technical operation purposes.',
+      ],
+    },
+    {
+      baslik: '5. Your Rights (GDPR)',
+      icerik: [
+        '• Right of access: You can find out which of your data is processed',
+        '• Right to rectification: You can correct inaccurate data',
+        '• Right to erasure: You can permanently delete your account and all data (Profile > Delete Account)',
+        '• Right to object: You can object to data processing',
+      ],
+    },
+    {
+      baslik: '6. Cookies',
+      icerik: [
+        'The mobile app does not use cookies. Session data is stored in your device\'s secure storage (Keychain/Keystore).',
+      ],
+    },
+    {
+      baslik: '7. Children Under 13',
+      icerik: [
+        'Macrova is not intended for children under 13 and does not knowingly collect data from them.',
+      ],
+    },
+    {
+      baslik: '8. Contact',
+      icerik: ['For privacy-related questions: privacy@macrova.app'],
+    },
+    {
+      baslik: '9. Policy Updates',
+      icerik: ['We may update this policy. You will be notified in-app for significant changes.'],
+    },
+  ],
+};
+
+const KOSULLAR_EN = {
+  baslik: 'Terms of Service',
+  tarih:  'Last updated: May 2026',
+  bolumler: [
+    {
+      baslik: '1. Purpose of the Service',
+      icerik: [
+        'Macrova is a mobile application designed to help users track their daily calorie and macro nutrient intake.',
+        '',
+        '⚠️  MEDICAL DISCLAIMER: Macrova is NOT a medical or healthcare application. Nothing in the app constitutes medical advice. Please consult a doctor or registered dietitian before making decisions about your diet or weight management.',
+      ],
+    },
+    {
+      baslik: '2. Age Requirement',
+      icerik: [
+        'Macrova is not suitable for users under the age of 13 and does not knowingly accept registrations from them. Accounts found to violate this policy will be terminated immediately.',
+      ],
+    },
+    {
+      baslik: '3. Account Responsibility',
+      icerik: [
+        '• You are responsible for keeping your account credentials (email, password) secure.',
+        '• You may not share your account with others.',
+        '• If you believe your account has been compromised, change your password immediately.',
+        '• You are responsible for all activity carried out under your account.',
+      ],
+    },
+    {
+      baslik: '4. Prohibited Use',
+      icerik: [
+        '• Reverse engineering, copying, or distributing the app without permission',
+        '• Using automated tools (bots, scrapers, etc.) to overload the system',
+        '• Attempting to exploit security vulnerabilities',
+        '• Attempting unauthorised access to other users\' accounts',
+        '• Providing false or misleading personal information',
+      ],
+    },
+    {
+      baslik: '5. Disclaimer of Warranties',
+      icerik: [
+        '• The app is provided "as is" with no guarantee of uninterrupted or error-free operation.',
+        '• Nutritional values in the database are for general reference; they may differ from packaging.',
+        '• Macrova accepts no liability for decisions made based on information provided by the app.',
+      ],
+    },
+    {
+      baslik: '6. Account Suspension and Termination',
+      icerik: [
+        'Macrova may close your account without prior notice in cases of terms violation, illegal use, or 24 months of inactivity.',
+        '',
+        'To delete your own account: Profile → Delete Account',
+      ],
+    },
+    {
+      baslik: '7. Changes',
+      icerik: [
+        'We may update these terms. You will be notified in-app for significant changes.',
+      ],
+    },
+    {
+      baslik: '8. Governing Law',
+      icerik: [
+        'These terms are governed by the laws of the Republic of Turkey. Istanbul courts have jurisdiction over disputes.',
+      ],
+    },
+    {
+      baslik: '9. Contact',
+      icerik: ['For any questions: support@macrova.app'],
+    },
+  ],
+};
+
 // ── Ekran ─────────────────────────────────────────────────────────────────────
 export default function LegalEkrani() {
   const router = useRouter();
   const { slug } = useLocalSearchParams<{ slug: string }>();
   const { renkler } = useTemaStore();
+  const { dil } = useDilStore();
 
-  const icerik = slug === 'kosullar' ? KOSULLAR : GIZLILIK;
+  const icerik = slug === 'kosullar'
+    ? (dil === 'tr' ? KOSULLAR_TR : KOSULLAR_EN)
+    : (dil === 'tr' ? GIZLILIK_TR : GIZLILIK_EN);
+
   const s = makeStyles(renkler);
 
   return (
@@ -158,7 +302,7 @@ export default function LegalEkrani() {
       {/* Başlık barı */}
       <View style={s.bar}>
         <TouchableOpacity onPress={() => router.back()} style={s.geriButon}>
-          <Text style={s.geriYazi}>← Geri</Text>
+          <Text style={s.geriYazi}>{dil === 'tr' ? '← Geri' : '← Back'}</Text>
         </TouchableOpacity>
         <Text style={s.barBaslik} numberOfLines={1}>{icerik.baslik}</Text>
         <View style={{ width: 60 }} />
