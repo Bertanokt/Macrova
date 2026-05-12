@@ -710,6 +710,11 @@ export default function AntrenmanEkrani() {
                 <Text style={s.egzersizSatirAdi}>{item.isim}</Text>
                 <Text style={s.egzersizSatirKas}>{item.kas_grubu}  ·  {item.ekipman}</Text>
               </View>
+              {/* YouTube */}
+              <TouchableOpacity style={s.ytButon} activeOpacity={0.7}
+                onPress={() => youtubeAc(item.isim)}>
+                <Text style={{ fontSize: 15 }}>▶️</Text>
+              </TouchableOpacity>
               {/* Düzenle */}
               <TouchableOpacity style={s.ytButon} activeOpacity={0.7}
                 onPress={() => {
