@@ -286,6 +286,16 @@ export default function AntrenmanEkrani() {
     });
   };
 
+  const egzersizTasi = (ei: number, yon: 'yukari' | 'asagi') => {
+    setAktifEgzersizler(prev => {
+      const yeni = [...prev];
+      const hedef = yon === 'yukari' ? ei - 1 : ei + 1;
+      if (hedef < 0 || hedef >= yeni.length) return prev;
+      [yeni[ei], yeni[hedef]] = [yeni[hedef], yeni[ei]];
+      return yeni;
+    });
+  };
+
   const egzersizSilFn = (ei: number) => {
     Alert.alert(tr('Egzersizi Kaldır', 'Remove Exercise'), tr('Bu egzersizi kaldırmak istiyor musun?', 'Remove?'), [
       { text: tr('İptal', 'Cancel'), style: 'cancel' },
@@ -555,6 +565,24 @@ export default function AntrenmanEkrani() {
                     </View>
                   )}
                 </View>
+                {/* ↑↓ taşıma butonları */}
+                <View style={{ flexDirection: 'column', marginRight: 4 }}>
+                  <TouchableOpacity
+                    onPress={() => egzersizTasi(ei, 'yukari')}
+                    activeOpacity={0.6}
+                    style={[s.tasiButon, { opacity: ei === 0 ? 0.2 : 1 }]}
+                    disabled={ei === 0}>
+                    <Text style={s.tasiYazi}>▲</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    onPress={() => egzersizTasi(ei, 'asagi')}
+                    activeOpacity={0.6}
+                    style={[s.tasiButon, { opacity: ei === aktifEgzersizler.length - 1 ? 0.2 : 1 }]}
+                    disabled={ei === aktifEgzersizler.length - 1}>
+                    <Text style={s.tasiYazi}>▼</Text>
+                  </TouchableOpacity>
+                </View>
+                {/* Kaldır */}
                 <TouchableOpacity onPress={() => egzersizSilFn(ei)} activeOpacity={0.7} style={{ padding: 6 }}>
                   <Text style={{ color: renkler.kirmizi, fontSize: 18 }}>✕</Text>
                 </TouchableOpacity>
@@ -1153,6 +1181,8 @@ const makeStyles = (r: ReturnType<typeof useTemaStore.getState>['renkler']) =>
     tamamlaButon:        { backgroundColor: r.sinir, borderRadius: 10, paddingVertical: 10, alignItems: 'center', justifyContent: 'center' },
     tamamlaAktif:        { backgroundColor: r.ana },
     setSilButon:         { width: 26, height: 26, borderRadius: 8, backgroundColor: r.kirmizi + '18', alignItems: 'center', justifyContent: 'center', marginLeft: 2 },
+    tasiButon:           { width: 24, height: 20, alignItems: 'center', justifyContent: 'center' },
+    tasiYazi:            { fontSize: 10, color: r.yaziAcik, fontWeight: '700' },
     sonPerfKart:         { backgroundColor: r.ana + '12', borderRadius: 8, paddingHorizontal: 8, paddingVertical: 4, marginTop: 4 },
     sonPerfYazi:         { fontSize: 11, color: r.ana, fontWeight: '600' },
     setEkleButon:        { alignItems: 'center', paddingVertical: 10, marginTop: 4 },
