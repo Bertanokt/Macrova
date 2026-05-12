@@ -316,7 +316,7 @@ def log_detay(log_id: str, kullanici_id: str = Depends(mevcut_kullanici)):
         supabase.table("set_loglari")
         .select("egzersiz_id, set_no, egzersizler(*)")
         .eq("antrenman_log_id", log_id)
-        .order("set_no")
+        .order("created_at")          # egzersizin ilk eklendiği sıraya göre
         .execute()
     ).data
     seen: set = set()
@@ -328,6 +328,45 @@ def log_detay(log_id: str, kullanici_id: str = Depends(mevcut_kullanici)):
             if s.get("egzersizler"):
                 egzersizler.append(s["egzersizler"])
     return {"antrenman_adi": kontrol.data[0]["antrenman_adi"], "egzersizler": egzersizler}
+
+
+@router.get("/son-performans/{egzersiz_id}", summary="Egzersiz son performansı")
+def son_performans(egzersiz_id: str, kullanici_id: str = Depends(mevcut_kullanici)):
+    loglar = (
+        supabase.table("antrenman_loglari")
+        .select("id, tarih")
+        .eq("kullanici_id", kullanici_id)
+        .order("tarih", desc=True)
+        .limit(30)
+        .execute()
+    ).data
+    if not loglar:
+        return None
+    log_ids   = [l["id"] for l in loglar]
+    log_tarih = {l["id"]: l["tarih"] for l in loglar}
+    log_sira  = {l["id"]: i for i, l in enumerate(loglar)}
+
+    setler = (
+        supabase.table("set_loglari")
+        .select("set_no, kg, tekrar, antrenman_log_id")
+        .eq("egzersiz_id", egzersiz_id)
+        .in_("antrenman_log_id", log_ids)
+        .eq("tamamlandi", True)
+        .execute()
+    ).data
+    if not setler:
+        return None
+
+    by_log: dict = {}
+    for s in setler:
+        lid = s["antrenman_log_id"]
+        by_log.setdefault(lid, []).append(s)
+
+    best = min(by_log.keys(), key=lambda x: log_sira.get(x, 9999))
+    return {
+        "tarih": log_tarih.get(best, ""),
+        "setler": sorted(by_log[best], key=lambda x: x["set_no"]),
+    }
 
 
 @router.delete("/set-sil/{set_id}", summary="Set sil")

@@ -9,7 +9,7 @@ import {
   antrenmanIstatistik, sablonlariGetir, antrenmanGecmisi,
   egzersizleriGetir, antrenmanBaslat, setEkle, setGuncelle,
   antrenmanBitir, sablonOlustur, antrenmanSil, sablonSil, egzersizOlustur,
-  antrenmanLogDetay, setSil, egzersizGuncelleDB, egzersizSilDB,
+  antrenmanLogDetay, setSil, egzersizGuncelleDB, egzersizSilDB, sonPerformansGetir,
 } from '../../services/api';
 import { useTemaStore } from '../../store/tema';
 import { useDilStore } from '../../store/dil';
@@ -60,6 +60,19 @@ export default function AntrenmanEkrani() {
   const [egArama, setEgArama]           = useState('');
   const [egYukleniyor, setEgYukleniyor] = useState(false);
   const [egHata, setEgHata]             = useState(false);
+
+  // ── Son performans (aktif antrenman sırasında gösterim için) ──────────────
+  const [sonPerfMap, setSonPerfMap] = useState<{[id: string]: any}>({});
+
+  const sonPerfYukle = async (egzersizId: string) => {
+    if (sonPerfMap[egzersizId] !== undefined) return;
+    try {
+      const r = await sonPerformansGetir(egzersizId);
+      setSonPerfMap(prev => ({ ...prev, [egzersizId]: r.data ?? null }));
+    } catch {
+      setSonPerfMap(prev => ({ ...prev, [egzersizId]: null }));
+    }
+  };
 
   // ── Egzersiz yöneticisi ───────────────────────────────────────────────────
   const [gosterEgzersizMgr, setGosterEgzersizMgr] = useState(false);
@@ -177,6 +190,7 @@ export default function AntrenmanEkrani() {
       egzersiz: eg,
       setler: [{ set_no: 1, kg: '', tekrar: '', tamamlandi: false }],
     }]);
+    sonPerfYukle(eg.id);
     setAktifEkran('antrenman');
   };
 
@@ -197,17 +211,18 @@ export default function AntrenmanEkrani() {
       });
       setAktifLogId(yanit.data.id);
       setAktifAdi(yanit.data.antrenman_adi);
-      setAktifEgzersizler(
-        sablon?.sablon_egzersizleri?.length
-          ? sablon.sablon_egzersizleri.map((se: any) => ({
-              egzersiz: se.egzersizler,
-              setler: Array.from({ length: se.hedef_set || 3 }, (_, i) => ({
-                set_no: i + 1, kg: String(se.hedef_kg || ''),
-                tekrar: se.hedef_rep?.split('-')[0] || '', tamamlandi: false,
-              })),
-            }))
-          : []
-      );
+      const egzersizListesi = sablon?.sablon_egzersizleri?.length
+        ? sablon.sablon_egzersizleri.map((se: any) => ({
+            egzersiz: se.egzersizler,
+            setler: Array.from({ length: se.hedef_set || 3 }, (_, i) => ({
+              set_no: i + 1, kg: String(se.hedef_kg || ''),
+              tekrar: se.hedef_rep?.split('-')[0] || '', tamamlandi: false,
+            })),
+          }))
+        : [];
+      setAktifEgzersizler(egzersizListesi);
+      setSonPerfMap({});
+      egzersizListesi.forEach(ae => { if (ae.egzersiz?.id) sonPerfYukle(ae.egzersiz.id); });
       setAktifEkran('antrenman');
       setGosterAktif(true);
     } catch {
@@ -293,12 +308,13 @@ export default function AntrenmanEkrani() {
       const yanit = await antrenmanBaslat({ antrenman_adi });
       setAktifLogId(yanit.data.id);
       setAktifAdi(yanit.data.antrenman_adi);
-      setAktifEgzersizler(
-        egList.map((eg: any) => ({
-          egzersiz: eg,
-          setler: [{ set_no: 1, kg: '', tekrar: '', tamamlandi: false }],
-        }))
-      );
+      const tekrarListesi = egList.map((eg: any) => ({
+        egzersiz: eg,
+        setler: [{ set_no: 1, kg: '', tekrar: '', tamamlandi: false }],
+      }));
+      setAktifEgzersizler(tekrarListesi);
+      setSonPerfMap({});
+      tekrarListesi.forEach((ae: any) => { if (ae.egzersiz?.id) sonPerfYukle(ae.egzersiz.id); });
       setAktifEkran('antrenman');
       setGosterAktif(true);
     } catch {
@@ -316,7 +332,7 @@ export default function AntrenmanEkrani() {
       const tamamlananSet   = aktifEgzersizler.reduce((t, ae) => t + ae.setler.filter(s => s.tamamlandi).length, 0);
       setOzet({ sure_dakika: dakika, toplam_set: r.data?.ozet?.toplam_set ?? tamamlananSet, egzersizler: egzersizListesi });
       setGosterAktif(false); setGosterOzet(true);
-      setBitirSure(''); setAktifLogId(null); setAktifEgzersizler([]);
+      setBitirSure(''); setAktifLogId(null); setAktifEgzersizler([]); setSonPerfMap({});
       veriYukle();
     } catch { Alert.alert(tr('Hata', 'Error'), tr('Kaydedilemedi.', 'Could not save.')); }
   };
@@ -513,6 +529,17 @@ export default function AntrenmanEkrani() {
                 <View style={{ flex: 1 }}>
                   <Text style={s.egzersizAdi}>{ae.egzersiz?.isim}</Text>
                   <Text style={s.egzersizKas}>{ae.egzersiz?.kas_grubu}  ·  {ae.egzersiz?.ekipman}</Text>
+                  {/* Son performans */}
+                  {sonPerfMap[ae.egzersiz?.id] && (
+                    <View style={s.sonPerfKart}>
+                      <Text style={s.sonPerfYazi}>
+                        📅 {sonPerfMap[ae.egzersiz.id].tarih}{'  '}
+                        {sonPerfMap[ae.egzersiz.id].setler
+                          .map((sp: any) => `${sp.kg ?? '?'}kg×${sp.tekrar ?? '?'}`)
+                          .join('  ·  ')}
+                      </Text>
+                    </View>
+                  )}
                 </View>
                 <TouchableOpacity onPress={() => egzersizSilFn(ei)} activeOpacity={0.7} style={{ padding: 6 }}>
                   <Text style={{ color: renkler.kirmizi, fontSize: 18 }}>✕</Text>
@@ -1107,6 +1134,8 @@ const makeStyles = (r: ReturnType<typeof useTemaStore.getState>['renkler']) =>
     tamamlaButon:        { backgroundColor: r.sinir, borderRadius: 10, paddingVertical: 10, alignItems: 'center', justifyContent: 'center' },
     tamamlaAktif:        { backgroundColor: r.ana },
     setSilButon:         { width: 26, height: 26, borderRadius: 8, backgroundColor: r.kirmizi + '18', alignItems: 'center', justifyContent: 'center', marginLeft: 2 },
+    sonPerfKart:         { backgroundColor: r.ana + '12', borderRadius: 8, paddingHorizontal: 8, paddingVertical: 4, marginTop: 4 },
+    sonPerfYazi:         { fontSize: 11, color: r.ana, fontWeight: '600' },
     setEkleButon:        { alignItems: 'center', paddingVertical: 10, marginTop: 4 },
     egzersizEkleButon:   { backgroundColor: r.kart, borderRadius: 16, padding: 18, alignItems: 'center', marginTop: 8, borderWidth: 1.5, borderColor: r.ana, borderStyle: 'dashed' },
     egzersizEkleYazi:    { color: r.ana, fontSize: 15, fontWeight: '700' },
